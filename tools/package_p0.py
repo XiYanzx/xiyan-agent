@@ -52,6 +52,7 @@ def main():
                     archive.writestr(f'{module}/{name}', data)
         for source, name in (
             ('LICENSE', 'LICENSE.txt'), ('THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.md'),
+            ('third_party/lucide/LICENSE', 'LUCIDE-LICENSE.txt'),
             ('docs/P0-release-notes.zh-CN.md', 'P0-README.zh-CN.md'),
         ):
             shutil.copyfile(root / source, stage / name)

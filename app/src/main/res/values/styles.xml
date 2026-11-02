@@ -4,20 +4,57 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:statusBarColor">#F7F8FC</item>
-        <item name="android:navigationBarColor">#F7F8FC</item>
-        <item name="android:colorAccent">#5266ED</item>
+        <item name="android:statusBarColor">#F7F9F6</item>
+        <item name="android:navigationBarColor">#F7F9F6</item>
+        <item name="android:colorAccent">#087F72</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowBackground">#F7F8FC</item>
+        <item name="android:windowBackground">#F7F9F6</item>
+        <item name="android:alertDialogTheme">@style/XiyanLightDialog</item>
     </style>
     <style name="XiyanDarkTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:statusBarColor">#0F1524</item>
-        <item name="android:navigationBarColor">#0F1524</item>
-        <item name="android:colorAccent">#98A6FF</item>
+        <item name="android:statusBarColor">#101919</item>
+        <item name="android:navigationBarColor">#101919</item>
+        <item name="android:colorAccent">#79D5BD</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowBackground">#0F1524</item>
+        <item name="android:windowBackground">#101919</item>
+        <item name="android:alertDialogTheme">@style/XiyanDarkDialog</item>
+    </style>
+    <style name="XiyanSheetAnimation">
+        <item name="android:windowEnterAnimation">@anim/xiyan_sheet_enter</item>
+        <item name="android:windowExitAnimation">@anim/xiyan_sheet_exit</item>
+    </style>
+    <style name="XiyanLightDialog" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/xiyan_dialog_light</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#087F72</item>
+        <item name="android:textColorPrimary">#172D2A</item>
+        <item name="android:textColorSecondary">#5D726D</item>
+        <item name="android:buttonStyle">@style/XiyanLightDialogButton</item>
+        <item name="android:windowMinWidthMajor">86%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+    </style>
+    <style name="XiyanDarkDialog" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/xiyan_dialog_dark</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#79D5BD</item>
+        <item name="android:textColorPrimary">#EDF5F2</item>
+        <item name="android:textColorSecondary">#A1B6AE</item>
+        <item name="android:buttonStyle">@style/XiyanDarkDialogButton</item>
+        <item name="android:windowMinWidthMajor">86%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+    </style>
+    <style name="XiyanLightDialogButton" parent="android:style/Widget.Material.Button.Borderless">
+        <item name="android:textColor">#087F72</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+    <style name="XiyanDarkDialogButton" parent="XiyanLightDialogButton">
+        <item name="android:textColor">#79D5BD</item>
     </style>
 </resources>

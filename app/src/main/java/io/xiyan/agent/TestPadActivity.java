@@ -2,7 +2,6 @@
 package io.xiyan.agent;
 
 import android.app.Activity;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -33,6 +32,7 @@ public final class TestPadActivity extends Activity {
     private long uiGeneration;
 
     @Override public void onCreate(Bundle savedInstanceState) {
+        Ui.applyTheme(this);
         super.onCreate(savedInstanceState);
         diagnostics = new Diagnostics(this);
         tapCount = savedInstanceState == null ? 0 : savedInstanceState.getInt("tapCount");
@@ -41,8 +41,9 @@ public final class TestPadActivity extends Activity {
         int padding = Ui.dp(this, 18);
         page.setPadding(padding, padding, padding, padding);
         scroll.addView(page);
-        page.addView(Ui.text(this, "P0 / CONTROL LAB", 12, Ui.ACCENT));
-        page.addView(Ui.heading(this, "手机控制测试台", 25));
+        LinearLayout header=Ui.row(this);
+        header.addView(Ui.iconButton(this,AgentIconView.Icon.BACK,"返回诊断",Ui.colors(this).text,this::finish),new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
+        header.addView(Ui.heading(this,"手机控制测试台",20),new LinearLayout.LayoutParams(0,-2,1));page.addView(header);
         page.addView(Ui.text(this, "每次按下验证按钮，只授权一次短手势。离开本页、旋转或紧急停止后，需要重新授权。已派发手势可能仍在结束。", 13, Ui.MUTED));
         result = Ui.text(this, "等待操作；请先在系统设置开启无障碍服务。", 14, Ui.ACCENT);
         page.addView(result);
@@ -74,7 +75,7 @@ public final class TestPadActivity extends Activity {
         for (int i = 1; i <= 8; i++) {
             TextView strip = Ui.text(this, "本机测试区域 " + i, 14, Ui.TEXT);
             strip.setGravity(Gravity.CENTER);
-            strip.setBackgroundColor(i % 2 == 0 ? Color.rgb(33, 55, 69) : Color.rgb(27, 41, 63));
+            strip.setBackgroundColor(i % 2 == 0 ? Ui.colors(this).raised : Ui.colors(this).surface);
             strips.addView(strip, new LinearLayout.LayoutParams(-1, Ui.dp(this, 64)));
         }
         swipePad.addView(strips);

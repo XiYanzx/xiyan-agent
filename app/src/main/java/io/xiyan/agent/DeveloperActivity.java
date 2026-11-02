@@ -34,13 +34,13 @@ public final class DeveloperActivity extends Activity {
         int padding = Ui.dp(this, 20);
         page.setPadding(padding, padding, padding, Ui.dp(this, 32));
         scroll.addView(page);
-        Ui.button(this, page, "‹ 返回设置", false, this::finish);
-        Ui.gap(this, page, 18);
-        page.addView(Ui.text(this, "XIYAN / DEVELOPER", 12, Ui.ACCENT));
-        page.addView(Ui.heading(this, "开发者与诊断", 26));
+        LinearLayout header=Ui.row(this);
+        header.addView(Ui.iconButton(this,AgentIconView.Icon.BACK,"返回设置",Ui.colors(this).text,this::finish),new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
+        header.addView(Ui.heading(this,"开发者与诊断",20),new LinearLayout.LayoutParams(0,-2,1));page.addView(header);
+        Ui.gap(this, page, 12);
         page.addView(Ui.text(this, "技术预览 " + BuildConfig.VERSION_NAME + " · P0 验证中", 13, Ui.MUTED));
         page.addView(Ui.text(this, "此处验证本机控制与运行环境。自主任务与长周期稳定性仍待验收。", 14, Ui.MUTED));
-        Ui.button(this, page, "紧急停止", true, this::emergencyStop);
+        android.widget.Button stop=Ui.outlineAction(this,"紧急停止",this::emergencyStop);stop.setTextColor(Ui.colors(this).alert);page.addView(stop);
 
         LinearLayout control = Ui.card(this, page, "手机控制", "本机控制测试台");
         controlStatus = Ui.text(this, "", 14, Ui.TEXT); control.addView(controlStatus);

@@ -4,7 +4,9 @@ Xiyan Agent application and core source in this repository is licensed under GPL
 
 No source or binary from Mobile Codex or a third-party Termux port is included in this P0 APK. Mobile Codex was reviewed as a research reference only; upstream references and versions are recorded in docs/P0-feasibility.md.
 
-The 2026-11-02 UI refresh also studies the layout and interaction patterns of Mobile Codex at commit 0bca7f0eed28eb3a3c9554db38e13d00136b95d0 (https://github.com/nokryong/mobile-codex). Its original code and artwork are GPL-3.0-only. Xiyan's native layout, palette and drawn icons are independently implemented; no upstream web bundle, logo or artwork is packaged. Reference paths are listed in docs/UI-REFRESH-MOBILE-CODEX.zh-CN.md.
+The P0.8 UI refresh studies the layout and interaction patterns of Mobile Codex at commit 0bca7f0eed28eb3a3c9554db38e13d00136b95d0 (https://github.com/nokryong/mobile-codex). Its original code and artwork are GPL-3.0-only. That version's native layout, palette and drawn icons were independently implemented; no upstream web bundle, logo or artwork is packaged. Reference paths are listed in docs/UI-REFRESH-MOBILE-CODEX.zh-CN.md.
+
+The Design System 1.0 refresh uses 33 Lucide functional icons at revision a529c28a8782e7954dde3d1a5e4409e829242b86 (https://github.com/lucide-icons/lucide). Lucide is ISC-licensed and its complete LICENSE includes the MIT notices for listed Feather-derived icons. The original SVGs and complete notices are in third_party/lucide/; PROVENANCE.json records the original and derived hashes. SVG geometry is converted to Android VectorDrawable with a uniform 24-unit viewport, 2-unit rounded strokes and runtime tint. Complete notices are also bundled in the APK at assets/licenses/lucide-LICENSE.txt. Xiyan's crossing-ribbon brand and launcher mark are original. Commercial product screenshots remain research references and are not shipped.
 
 The P0 APK contains application Java code compiled with the Android SDK and uses Android platform APIs. It does not bundle Codex, V8, Rust runtime artifacts, Android NDK libraries, or an external AI SDK.
 

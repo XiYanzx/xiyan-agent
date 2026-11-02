@@ -42,6 +42,8 @@ public final class MainActivity extends Activity {
     private NavigationDrawer drawer;
     private ModelPickerDialog picker;
     private TextView toolbarTitle;
+    private FrameLayout toolbarAction;
+    private boolean toolbarActive;
     private String draft="",submittedPrompt="";
     private String submittedAccountScope;
     private int draftStart,draftEnd;
@@ -95,6 +97,7 @@ public final class MainActivity extends Activity {
         XiyanAccessibilityService.removeStateListener(controlObserver);super.onStop();
     }
     @Override protected void onDestroy() {
+        if(content!=null)content.leave();
         if(picker!=null)picker.dismiss();handler.removeCallbacks(clockRefresh);super.onDestroy();
     }
     @Override protected void onSaveInstanceState(Bundle state) {
@@ -130,20 +133,41 @@ public final class MainActivity extends Activity {
         else if(screen==Screen.TASKS)content=new TasksScreen(this);
         else content=new SettingsScreen(this,screen);
         screenHost.removeAllViews();screenHost.addView(content.view(),new FrameLayout.LayoutParams(-1,-1));
-        rebuildToolbar();content.update(account.snapshot());
+        rebuildToolbar();content.update(account.snapshot());Ui.enter(this,content.view());
     }
     private void rebuildToolbar() {
+        setTitle(screen==Screen.CHAT?"Xiyan":screen.title);
         toolbar.setVisibility(View.VISIBLE);toolbar.removeAllViews();Ui.Colors c=Ui.colors(this);
         boolean child=screen==Screen.APPEARANCE||screen==Screen.CONTROLS||screen==Screen.ABOUT||screen==Screen.ACCOUNT;
         toolbar.addView(Ui.iconButton(this,child?AgentIconView.Icon.BACK:AgentIconView.Icon.MENU,
                 child?"返回":"打开导航",c.text,child?this::handleBack:drawer::open),new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
-        toolbarTitle=Ui.heading(this,screen==Screen.CHAT?"Xiyan":screen.title,18);
+        toolbarTitle=Ui.heading(this,screen==Screen.CHAT?"Xiyan":screen.title,20);
         toolbar.addView(toolbarTitle,new LinearLayout.LayoutParams(0,-2,1));
+        toolbarAction=null;
         if(screen==Screen.CHAT)toolbar.addView(Ui.iconButton(this,AgentIconView.Icon.PLUS,"新建对话",c.accent,this::newChat),
                 new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
         else {
-            View stop=Ui.iconButton(this,AgentIconView.Icon.STOP,"停止当前回复与后续手机动作",c.alert,this::emergencyStop);
-            toolbar.addView(stop,new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
+            toolbarAction=Ui.iconButton(this,AgentIconView.Icon.MORE,"页面操作",c.muted,this::pageAction);
+            toolbar.addView(toolbarAction,new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
+            toolbarActive=false;updateToolbarAction(account.snapshot());
+        }
+    }
+    Screen currentScreen(){return screen;}
+    private void pageAction(){
+        SiwcClient.Snapshot s=account.snapshot();
+        if(s.busy||"running".equals(s.inferenceStatus)){emergencyStop();return;}
+        android.widget.PopupMenu menu=new android.widget.PopupMenu(this,toolbarAction);
+        menu.getMenu().add("停止后续手机动作").setOnMenuItemClickListener(item->{emergencyStop();return true;});
+        menu.show();
+    }
+    private void updateToolbarAction(SiwcClient.Snapshot snapshot){
+        if(toolbarAction==null)return;boolean active=snapshot.busy||"running".equals(snapshot.inferenceStatus);
+        Ui.Colors colors=Ui.colors(this);
+        ((AgentIconView)toolbarAction.getChildAt(0)).appearance(active?AgentIconView.Icon.STOP:AgentIconView.Icon.MORE,active?colors.alert:colors.muted);
+        toolbarAction.setContentDescription(active?"停止当前回复与后续手机动作":"页面操作");
+        if(active!=toolbarActive){
+            toolbarActive=active;toolbarAction.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(0x22087f72),Ui.shape(this,active?colors.alertSurface:Color.TRANSPARENT,20,Color.TRANSPARENT),null));
         }
     }
     int chatViewportHeight(){return toolbar.getParent() instanceof View?((View)toolbar.getParent()).getHeight():0;}
@@ -157,6 +181,7 @@ public final class MainActivity extends Activity {
         if(!preparingReply&&"idle".equals(s.inferenceStatus))clearLocalTurn();
         if(submittedAccountScope!=null&&s.catalog!=null&&!submittedAccountScope.equals(s.catalog.getAccountScope()))clearLocalTurn();
         lastHasSession=s.hasSession;
+        updateToolbarAction(s);
         content.update(s);if(drawer!=null)drawer.update(s);
         if(picker!=null&&picker.isShowing())picker.update(s);
     }
@@ -210,9 +235,9 @@ public final class MainActivity extends Activity {
     }
     void editLastPrompt(){if(!submittedPrompt.isEmpty())fillDraft(submittedPrompt);}
     private void newChat() {
-        boolean running="running".equals(account.snapshot().inferenceStatus);
+        boolean running=preparingReply||"running".equals(account.snapshot().inferenceStatus);
         Runnable create=()->{
-            if(running)emergencyStop();
+            if(preparingReply||"running".equals(account.snapshot().inferenceStatus))emergencyStop();
             if(!draft.isEmpty())getPreferences(MODE_PRIVATE).edit().putString("taskDraft",draft).apply();
             draft="";draftStart=draftEnd=0;clearLocalTurn();
             destination(Screen.CHAT);
