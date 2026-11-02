@@ -29,7 +29,11 @@
 
 HTTP 错误只保留经过长度和格式限制的状态码、错误代码、参数名及请求 ID。403 策略或路由限制保留本机会话，401 或 `invalid_grant` 提示重新连接。完成证据单独记录服务端响应 ID、实际报告的模型与服务等级、结束状态和耗时，缺少字段时保持未知。[官方错误与恢复](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery)
 
-调试测试 APK 提供显式 `live=true` 的安全验证入口，分开执行本机会话检查、实际目录刷新和一次合成文本回合。它通过应用自己的账号模块使用令牌，导出内容排除账号邮箱、subject、客户端身份、目录 accountScope 和凭据。每次推理生成独立随机标记，要求新的完成证据与对应合成结果一致；其他回合的文本保留在应用内存中。
+debug 主 APK 提供受 `android.permission.DUMP` 保护的 `LiveAccountVerificationActivity`，与当前应用共用进程和账号单例。`inspect` 即时读取状态，保留正在进行的授权事务；`catalog` 和 `verify` 遇到账号忙碌时返回 `operation_in_progress`，由操作者等待登录结束后再调用。普通启动方式保留应用进程，验证入口始终避免调用账号取消。
+
+每次验证要求独立 UUIDv4 `requestId`，将白名单 JSON 原子写入应用 `no_backup/verification/<UUID>.json`。结果包括实际来源、进程 ID、登录阶段与固定错误码；排除账号邮箱、subject、客户端身份、目录 accountScope 和凭据。推理使用独立随机标记，要求新的完成证据与对应合成结果一致；其他回合的文本保留在应用内存中。release 构建排除该调试入口。
+
+真实账号验证已移出 instrumentation。Android instrumentation 的启动和结束可能重启目标应用进程，因此四项合成密钥库测试安排在账号操作空闲时，并继续使用独立文件与密钥命名空间。
 
 ## 会话与隐私
 

@@ -25,19 +25,9 @@ public final class CredentialStoreInstrumentation extends Instrumentation {
     private interface Check { void run() throws Exception; }
     private final JSONArray cases = new JSONArray();
     private int failures;
-    private Bundle arguments;
-
-    @Override public void onCreate(Bundle input) {
-        super.onCreate(input);
-        arguments = input == null ? new Bundle() : new Bundle(input);
-        start();
-    }
+    @Override public void onCreate(Bundle input) { super.onCreate(input); start(); }
 
     @Override public void onStart() {
-        if ("true".equals(arguments.getString("live"))) {
-            new LiveAccountVerification(this, arguments).run();
-            return;
-        }
         runCheck("keystore_aes_gcm_round_trip", this::roundTrip);
         runCheck("ciphertext_tamper_rejected", this::tamperRejected);
         runCheck("clear_isolates_test_namespace", this::clearIsolation);

@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import io.xiyan.agent.core.auth.LoopbackCallbackRequest;
 import io.xiyan.agent.core.auth.PendingSignIn;
+import io.xiyan.agent.core.auth.TokenClaimsPolicy;
 import io.xiyan.agent.core.model.ModelCatalog;
 import io.xiyan.agent.core.response.InferenceEvidence;
 import io.xiyan.agent.core.response.ServiceFailure;
@@ -38,13 +39,13 @@ public final class SiwcClient {
     public static final class Snapshot {
         public final boolean connected, hasSession, reauthRequired, busy;
         public final long expiresAtEpochSeconds;
-        public final String message, accountLabel, inferenceText, inferenceStatus, operationStage;
+        public final String message, accountLabel, inferenceText, inferenceStatus, operationStage, failureCode;
         public final InferenceEvidence inferenceEvidence;
         public final ServiceFailure lastFailure;
         public final ModelCatalog catalog;
         Snapshot(boolean hasSession, boolean reauthRequired, long expiresAt, boolean busy,
                 String message, String accountLabel, ModelCatalog catalog, String inferenceText, String inferenceStatus,
-                String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure) {
+                String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure, String failureCode) {
             this.hasSession = hasSession; this.reauthRequired = reauthRequired;
             this.expiresAtEpochSeconds = expiresAt;
             this.connected = hasSession && !reauthRequired && expiresAt > now();
@@ -52,6 +53,7 @@ public final class SiwcClient {
             this.accountLabel = accountLabel; this.catalog = catalog;
             this.inferenceText = inferenceText; this.inferenceStatus = inferenceStatus;
             this.operationStage = operationStage; this.inferenceEvidence = inferenceEvidence; this.lastFailure = lastFailure;
+            this.failureCode = failureCode;
         }
     }
     private interface Work { void run(long generation) throws Exception; }
@@ -75,6 +77,7 @@ public final class SiwcClient {
     private String operationStage = "尚未开始";
     private InferenceEvidence inferenceEvidence;
     private ServiceFailure lastFailure;
+    private String failureCode;
     private volatile Runnable inferenceCancellation;
     private long generation;
     private volatile ServerSocket callbackSocket;
@@ -100,7 +103,7 @@ public final class SiwcClient {
         synchronized (lock) {
             return new Snapshot(session != null, reauthRequired, session == null ? 0 : session.optLong("expiresAt"), busy, message,
                     session == null ? "未连接" : session.optString("email", "已连接账号"), catalog, inferenceText, inferenceStatus,
-                    operationStage, inferenceEvidence, lastFailure);
+                    operationStage, inferenceEvidence, lastFailure, failureCode);
         }
     }
     public void checkEnvironment() {
@@ -266,6 +269,7 @@ public final class SiwcClient {
         final long expected;
         synchronized (lock) {
             if (busy) return; busy = true; expected = ++generation; message = status; operationStage = status; lastFailure = null;
+            failureCode = null;
         }
         notifyChanged();
         worker.execute(() -> {
@@ -273,6 +277,7 @@ public final class SiwcClient {
             catch (Exception error) {
                 synchronized (lock) {
                     if (generation == expected) {
+                        failureCode = safeFailureCode(error);
                         if (error instanceof SiwcHttp.Failure) lastFailure = ((SiwcHttp.Failure) error).diagnostic;
                         if (error instanceof SiwcInference.Failure) {
                             SiwcInference.Failure failure = (SiwcInference.Failure) error;
@@ -326,16 +331,16 @@ public final class SiwcClient {
     }
     private static JSONObject tokenSession(JSONObject token, String clientId, IdTokenVerifier.Verified identity,
             String nonce, JSONObject previous) throws Exception {
-        if (!"Bearer".equalsIgnoreCase(tokenString(token, "token_type", true))) throw new IOException("Unsupported token type");
+        if (!"Bearer".equalsIgnoreCase(tokenString(token, "token_type", true))) throw new SessionValidationException("oauth_token_type_unsupported");
         String scope = tokenString(token, "scope", previous == null);
         if (scope == null) scope = previous.getString("scope");
         boolean direct = false;
         for (String item : scope.split(" +")) direct |= "chatgpt.tokens.use.direct".equals(item);
-        if (!direct) throw new IOException("Subscription sharing scope not granted");
+        if (!direct) throw new SessionValidationException("subscription_scope_missing");
         Object expiry = token.opt("expires_in");
-        if (!(expiry instanceof Integer) && !(expiry instanceof Long)) throw new IOException("Missing token expiry");
+        if (!(expiry instanceof Integer) && !(expiry instanceof Long)) throw new SessionValidationException("oauth_token_expiry_missing");
         long lifetime = ((Number) expiry).longValue();
-        if (lifetime <= 0 || lifetime > 31536000) throw new IOException("Invalid token expiry");
+        if (lifetime <= 0 || lifetime > 31536000) throw new SessionValidationException("oauth_token_expiry_invalid");
         String refresh = tokenString(token, "refresh_token", false);
         String idToken = tokenString(token, "id_token", false);
         return new JSONObject().put("version", 1).put("clientId", clientId).put("subject", identity.subject)
@@ -348,7 +353,7 @@ public final class SiwcClient {
         Object text = value.opt(key);
         if ((text == null || text == JSONObject.NULL) && !required) return null;
         if (!(text instanceof String) || ((String) text).isEmpty() || ((String) text).length() > 65536
-                || ((String) text).indexOf('\r') >= 0 || ((String) text).indexOf('\n') >= 0) throw new IOException("Invalid OAuth response field");
+                || ((String) text).indexOf('\r') >= 0 || ((String) text).indexOf('\n') >= 0) throw new SessionValidationException("oauth_invalid_" + key);
         return (String) text;
     }
     private static void requireSession(JSONObject value) throws Exception {
@@ -448,7 +453,33 @@ public final class SiwcClient {
     }
     private void notifyChanged() { main.post(() -> { for (Observer observer : observers) observer.changed(); }); }
     private static long now() { return System.currentTimeMillis() / 1000; }
+    private static final class SessionValidationException extends IOException {
+        final String code;
+        SessionValidationException(String code) { super("OAuth response validation failed"); this.code = code; }
+    }
+    private static String safeFailureCode(Exception error) {
+        if (error instanceof SessionValidationException) return ((SessionValidationException) error).code;
+        if (error instanceof TokenClaimsPolicy.InvalidClaimsException) {
+            return "id_claim_" + ((TokenClaimsPolicy.InvalidClaimsException) error).getReason().name();
+        }
+        if (error instanceof PendingSignIn.AuthException) return "callback_" + ((PendingSignIn.AuthException) error).getReason().name();
+        if (error instanceof java.net.UnknownHostException) return "network_unknown_host";
+        if (error instanceof java.net.SocketTimeoutException) return "network_timeout";
+        if (error instanceof javax.net.ssl.SSLException) return "network_tls";
+        if (error instanceof SiwcHttp.Failure) return "http_" + ((SiwcHttp.Failure) error).status;
+        String type = error.getClass().getSimpleName();
+        return type.matches("[A-Za-z0-9_]{1,80}") ? type : "operation_failed";
+    }
     private static String safeFailure(Exception error) {
+        if (error instanceof SessionValidationException) {
+            String code = ((SessionValidationException) error).code;
+            return "subscription_scope_missing".equals(code)
+                    ? "订阅使用权限尚未授予，请在官方授权中启用 ChatGPT 订阅使用。"
+                    : "官方令牌响应字段未通过校验（" + code + "）。";
+        }
+        if (error instanceof TokenClaimsPolicy.InvalidClaimsException) {
+            return "ID 令牌校验未通过（" + ((TokenClaimsPolicy.InvalidClaimsException) error).getReason().name() + "）。请重新连接。";
+        }
         if (error instanceof ModelCatalog.SelectionException) return "所选模型或思考程度已变化，请刷新目录后重新选择。";
         if (error instanceof SiwcInference.Failure) {
             switch (((SiwcInference.Failure) error).reason) {
