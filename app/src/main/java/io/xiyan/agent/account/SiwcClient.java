@@ -447,7 +447,7 @@ public final class SiwcClient {
                 "supported_reasoning_efforts", "supportedReasoningLevels", "supported_reasoning_levels",
                 "defaultReasoningEffort", "default_reasoning_effort", "defaultReasoningLevel", "default_reasoning_level",
                 "supportedServiceTiers", "supported_service_tiers", "serviceTiers", "service_tiers"};
-        String[] optionKeys = {"reasoningEffort", "reasoning_effort", "effort", "value", "serviceTier", "service_tier"};
+        String[] optionKeys = {"reasoningEffort", "reasoning_effort", "effort", "value", "serviceTier", "service_tier", "id"};
         int listed = 0;
         for (int i = 0; i < models.length(); i++) {
             JSONObject model = models.getJSONObject(i);

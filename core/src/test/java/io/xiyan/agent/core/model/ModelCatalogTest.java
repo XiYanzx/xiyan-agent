@@ -141,6 +141,41 @@ public class ModelCatalogTest {
     }
 
     @Test
+    public void acceptsCompleteOfficialReasoningAndServiceTierIdShape() {
+        // Public shape: openai/codex@6ff1e1ca3b30fc8b914720681fcf5fe62e95f856,
+        // codex-rs/models-manager/models.json. Catalog entries describe choices only.
+        Map<String, Object> metadata = field("slug", "gpt-6.1-sol");
+        metadata.put("display_name", "GPT-6.1-Sol");
+        metadata.put("default_reasoning_level", "low");
+        metadata.put("supported_reasoning_levels", Arrays.asList(
+                field("effort", "low"), field("effort", "medium"), field("effort", "high"),
+                field("effort", "xhigh"), field("effort", "max"), field("effort", "ultra")));
+        Map<String, Object> tier = field("id", "priority");
+        tier.put("name", "Fast"); tier.put("description", "Faster service");
+        metadata.put("service_tiers", Collections.singletonList(tier));
+        ModelCatalog catalog = catalog(metadata);
+
+        assertEquals("low", catalog.findModel("gpt-6.1-sol").getDefaultReasoningEffort());
+        assertEquals(Collections.singleton("priority"), catalog.findModel("gpt-6.1-sol").getServiceTiers());
+        assertNull(catalog.select("gpt-6.1-sol", "high", null).getServiceTier());
+        assertEquals("high", catalog.select("gpt-6.1-sol", "high", null).getReasoningEffort());
+    }
+
+    @Test
+    public void serviceTierIdsRemainStrictAndExistingValueKeysKeepPrecedence() {
+        for (Object invalidId : Arrays.asList(null, 42, "", "  ")) {
+            Map<String, Object> metadata = model("invalid-tier-id");
+            metadata.put("service_tiers", Collections.singletonList(field("id", invalidId)));
+            assertThrows(IllegalArgumentException.class, () -> catalog(metadata));
+        }
+        Map<String, Object> tier = field("value", "existing-server-tier");
+        tier.put("id", "new-alias-tier");
+        Map<String, Object> metadata = model("tier-precedence");
+        metadata.put("service_tiers", Collections.singletonList(tier));
+        assertEquals(Collections.singleton("existing-server-tier"), catalog(metadata).findModel("tier-precedence").getServiceTiers());
+    }
+
+    @Test
     public void levelAliasesStillRejectInvalidDefaultsAndMalformedOptions() {
         Map<String, Object> invalidDefault = model("invalid-default");
         invalidDefault.put("supported_reasoning_levels", Collections.singletonList(field("effort", "declared")));

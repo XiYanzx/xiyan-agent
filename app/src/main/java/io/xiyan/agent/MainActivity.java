@@ -321,7 +321,7 @@ public final class MainActivity extends Activity {
         SiwcClient.Snapshot snapshot = account.snapshot();
         LinearLayout login = Ui.card(this, page, "官方授权", snapshot.hasSession ? (snapshot.reauthRequired ? "需要重新登录" : snapshot.connected ? "本机会话有效" : "本机会话已过期") : "尚未登录");
         accountStatus = Ui.text(this, snapshot.message, 14, Ui.TEXT); login.addView(accountStatus);
-        login.addView(Ui.text(this, snapshot.hasSession ? "会话保存在此设备，调用前检查有效期。模型推理仍待实测。"
+        login.addView(Ui.text(this, snapshot.hasSession ? "会话保存在此设备，调用前检查有效期。具体推理状态请查看对话页。"
                 : "通过系统浏览器完成 ChatGPT 登录与授权。授权完成后返回本应用。", 13, Ui.MUTED));
         Button environment = Ui.button(this, login, "检查官方连接环境", false, account::checkEnvironment);
         environment.setEnabled(!snapshot.busy);

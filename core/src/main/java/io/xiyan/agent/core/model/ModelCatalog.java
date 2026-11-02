@@ -183,7 +183,7 @@ public final class ModelCatalog {
                     new String[]{"reasoningEffort", "reasoning_effort", "value", "effort"});
             this.serviceTiers = options(metadata,
                     new String[]{"supportedServiceTiers", "supported_service_tiers", "serviceTiers", "service_tiers"},
-                    new String[]{"serviceTier", "service_tier", "value"});
+                    new String[]{"serviceTier", "service_tier", "value", "id"});
             this.defaultReasoningEffort = optionalMetadataText(metadata,
                     "defaultReasoningEffort", "default_reasoning_effort", "defaultReasoningLevel", "default_reasoning_level");
             if (defaultReasoningEffort != null && !reasoningEfforts.contains(defaultReasoningEffort)) {

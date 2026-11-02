@@ -30,8 +30,8 @@ android {
         applicationId 'io.xiyan.agent.p0'
         minSdk 29
         targetSdk 35
-        versionCode 5
-        versionName '0.1.0-p0.5'
+        versionCode 6
+        versionName '0.1.0-p0.6'
         testInstrumentationRunner 'io.xiyan.agent.account.CredentialStoreInstrumentation'
         buildConfigField 'String', 'SOURCE_COMMIT', groovy.json.JsonOutput.toJson(rootProject.xiyanGitState.sourceCommit)
         buildConfigField 'boolean', 'SOURCE_TREE_CLEAN', rootProject.xiyanGitState.sourceTreeClean.toString()
