@@ -1,0 +1,2 @@
+file-5.46
+magic file from /etc/magic:/usr/share/misc/magic

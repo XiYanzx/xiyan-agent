@@ -1,0 +1,1 @@
+/workspace/runtime-spike/release-inspect/extracted/bin/codex-code-mode-host: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, stripped
