@@ -39,14 +39,14 @@ public final class SiwcClient {
     public static final class Snapshot {
         public final boolean connected, hasSession, reauthRequired, busy;
         public final long expiresAtEpochSeconds;
-        public final String message, accountLabel, inferenceText, inferenceStatus, operationStage, failureCode, catalogFormatJson;
+        public final String message, accountLabel, inferenceText, inferenceStatus, operationStage, failureCode, catalogFormatJson, streamFormatJson;
         public final InferenceEvidence inferenceEvidence;
         public final ServiceFailure lastFailure;
         public final ModelCatalog catalog;
         Snapshot(boolean hasSession, boolean reauthRequired, long expiresAt, boolean busy,
                 String message, String accountLabel, ModelCatalog catalog, String inferenceText, String inferenceStatus,
                 String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure, String failureCode,
-                String catalogFormatJson) {
+                String catalogFormatJson, String streamFormatJson) {
             this.hasSession = hasSession; this.reauthRequired = reauthRequired;
             this.expiresAtEpochSeconds = expiresAt;
             this.connected = hasSession && !reauthRequired && expiresAt > now();
@@ -56,6 +56,7 @@ public final class SiwcClient {
             this.operationStage = operationStage; this.inferenceEvidence = inferenceEvidence; this.lastFailure = lastFailure;
             this.failureCode = failureCode;
             this.catalogFormatJson = catalogFormatJson;
+            this.streamFormatJson = streamFormatJson;
         }
     }
     private interface Work { void run(long generation) throws Exception; }
@@ -81,6 +82,7 @@ public final class SiwcClient {
     private ServiceFailure lastFailure;
     private String failureCode;
     private String catalogFormatJson;
+    private String streamFormatJson;
     private volatile Runnable inferenceCancellation;
     private long generation;
     private volatile ServerSocket callbackSocket;
@@ -106,7 +108,7 @@ public final class SiwcClient {
         synchronized (lock) {
             return new Snapshot(session != null, reauthRequired, session == null ? 0 : session.optLong("expiresAt"), busy, message,
                     session == null ? "未连接" : session.optString("email", "已连接账号"), catalog, inferenceText, inferenceStatus,
-                    operationStage, inferenceEvidence, lastFailure, failureCode, catalogFormatJson);
+                    operationStage, inferenceEvidence, lastFailure, failureCode, catalogFormatJson, streamFormatJson);
         }
     }
     public void checkEnvironment() {
@@ -227,6 +229,7 @@ public final class SiwcClient {
                 });
                 synchronized (lock) {
                     check(expected); inferenceText = completed.text; inferenceEvidence = completed.evidence; inferenceStatus = "completed";
+                    streamFormatJson = completed.streamFormatJson;
                 }
                 progress(expected, "本次文本推理已完成，已收到官方 response.completed 事件。");
             } catch (SiwcHttp.Failure failure) {
@@ -277,7 +280,7 @@ public final class SiwcClient {
         final long expected;
         synchronized (lock) {
             if (busy) return; busy = true; expected = ++generation; message = status; operationStage = status; lastFailure = null;
-            failureCode = null; catalogFormatJson = null;
+            failureCode = null; catalogFormatJson = null; streamFormatJson = null;
         }
         notifyChanged();
         worker.execute(() -> {
@@ -290,6 +293,7 @@ public final class SiwcClient {
                         if (error instanceof SiwcInference.Failure) {
                             SiwcInference.Failure failure = (SiwcInference.Failure) error;
                             lastFailure = failure.diagnostic;
+                            streamFormatJson = failure.streamFormatJson;
                             if (failure.evidence != null) inferenceEvidence = failure.evidence;
                         }
                         message = operationStage + "\n" + safeFailure(error);
@@ -531,6 +535,10 @@ public final class SiwcClient {
         CatalogFormatFailure(String code) { super("Account model metadata validation failed"); this.code = code; }
     }
     private static String safeFailureCode(Exception error) {
+        if (error instanceof SiwcInference.Failure) {
+            String reason = ((SiwcInference.Failure) error).reason;
+            return reason != null && reason.matches("[a-z_]{1,64}") ? "inference_" + reason : "inference_failed";
+        }
         if (error instanceof CatalogFormatFailure) return ((CatalogFormatFailure) error).code;
         if (error instanceof SessionValidationException) return ((SessionValidationException) error).code;
         if (error instanceof TokenClaimsPolicy.InvalidClaimsException) {
@@ -579,6 +587,10 @@ public final class SiwcClient {
         if (error instanceof SiwcHttp.Failure) {
             SiwcHttp.Failure failure = (SiwcHttp.Failure) error;
             int status = failure.status;
+            if (status == 400 && "invalid_value".equals(failure.diagnostic.getCode())
+                    && "reasoning.effort".equals(failure.diagnostic.getParam())) {
+                return "当前接口拒绝了所选思考程度，目录声明与本次调用结果存在差异。可选择服务默认值后重新发送。";
+            }
             switch (failure.diagnostic.getKind()) {
                 case AUTHORIZATION_REQUIRED: return "授权需要重新连接，请使用原账号登录。";
                 case CLIENT_CONFIGURATION: return "官方客户端配置未通过校验，请检查接入配置。";

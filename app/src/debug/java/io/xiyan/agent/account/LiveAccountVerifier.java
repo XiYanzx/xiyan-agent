@@ -171,6 +171,8 @@ final class LiveAccountVerifier {
                 .put("inferenceStatus", snapshot.inferenceStatus);
         if (snapshot.catalogFormatJson != null) target.put("catalogFormat", new JSONObject(snapshot.catalogFormatJson));
         else target.remove("catalogFormat");
+        if (snapshot.streamFormatJson != null) target.put("streamFormat", new JSONObject(snapshot.streamFormatJson));
+        else target.remove("streamFormat");
         ServiceFailure failure = snapshot.lastFailure;
         if (failure != null) target.put("serviceFailure", new JSONObject().put("httpStatus", failure.getHttpStatus())
                 .put("kind", failure.getKind().name()).put("code", nullable(failure.getCode()))
