@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.xiyan.agent.core.action.ActionGateTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-11-02T03:12:58" hostname="290d814742cd" time="0.046">
+  <properties/>
+  <testcase name="screenChangeBetweenSubmissionAndResultCannotBeConfirmed" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.006"/>
+  <testcase name="windowEpochDirectionAndDimensionsEachStopTheQueue" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="actionDeadlineAndObservationExpiryAreAlsoCheckedAtConfirmation" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="stopRacingWithDispatchNeverAllowsASubmissionAfterStopReturns" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.014"/>
+  <testcase name="permissionRevocationRejectsLateSuccessAndRequiresFreshAuthorization" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.002"/>
+  <testcase name="twoEnginesRacingForOneDeviceHaveExactlyOneLease" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.003"/>
+  <testcase name="observationExpiryIsCheckedAgainImmediatelyBeforeDispatch" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="replacementFrameInvalidatesQueuedTokensAndIdsCannotBeRebound" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="stopBeforeDispatchPreventsAnyPlatformCallAndInvalidatesQueue" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="platformRejectionReleasesSlotButSubmissionExceptionKeepsUncertainSlot" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="freshActionRequiresNewVerifiedResultAndDropsOldFrameQueue" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.002"/>
+  <testcase name="queueIsOrderedAndTokensCannotCrossGateInstances" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.004"/>
+  <testcase name="falsePostconditionAndReusedResultDoNotReportSuccess" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="stoppedNativeActionKeepsDeviceOccupiedUntilItsRealTerminalCallback" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <testcase name="futureAndUnusableObservationsCannotFallBackToAnOlderFrame" classname="io.xiyan.agent.core.action.ActionGateTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

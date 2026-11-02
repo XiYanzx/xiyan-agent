@@ -7,6 +7,8 @@
 - 添加不含截图或凭据的有界本机事件与 JSON 导出。
 - 添加独立动作安全核心和动态模型元数据解析器，23 项核心单元测试；当前控制器仍使用 P0 guard。
 - 记录官方 Codex Android 构建、NDK/Bionic smoke 与 Linux ELF 静态检查的真实结果。
-- 建立 CI、APK 签名/对齐/SHA256 打包及仅供 P0 的 prerelease 流程。
+- 建立 Codex Cloud 构建、APK 签名/对齐/SHA256 打包及仅供 P0 的 prerelease 交付。
+
+用户后续要求编译/测试仅在 Codex Cloud，早先 Actions 工作流已删除，两个准备失败的历史运行均已结束。GitHub 仅保存源码并分发云端产物，详见最新需求补充。
 
 P0 尚未验收。账户、模型推理、原生 Codex 启动、完整自主任务与游戏/长时间真机测试未完成。

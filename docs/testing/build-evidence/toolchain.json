@@ -1,0 +1,29 @@
+{
+  "environment": "Codex Cloud /workspace (Linux x86_64)",
+  "java": {
+    "vendor": "Eclipse Temurin",
+    "version": "21.0.13+9",
+    "sourceCompatibility": 17,
+    "targetCompatibility": 17,
+    "archive": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz",
+    "sha256": "d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c"
+  },
+  "gradle": {
+    "version": "8.11.1",
+    "sha256": "f397b287023acdba1e9f6fc5ea72d22dd63669d59ed4a289a29b1a76eee151c6"
+  },
+  "androidGradlePlugin": "8.9.2",
+  "androidSdk": {
+    "compile": 35,
+    "target": 35,
+    "min": 29,
+    "buildTools": "35.0.0",
+    "platformTools": "37.0.1",
+    "commandLineTools": "23.0 / Android CLI 1.1.16717390",
+    "installer": "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip",
+    "officialRepositorySha1": "e025545c62a8e64c7559119566a569fb1dec5f60"
+  },
+  "runtimeExperiment": "See docs/runtime/P0-RUNTIME-SPIKE.zh-CN.md; no Codex runtime bundled",
+  "networkTls": "Inherited environment proxy; existing /etc/ssl/certs/java/cacerts used for Java TLS verification",
+  "githubBuilds": "Disabled and removed per latest user requirement"
+}
