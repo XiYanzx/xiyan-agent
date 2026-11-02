@@ -4,20 +4,20 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:statusBarColor">#F3F7F7</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
-        <item name="android:colorAccent">#006C5B</item>
+        <item name="android:statusBarColor">#F7F8FC</item>
+        <item name="android:navigationBarColor">#F7F8FC</item>
+        <item name="android:colorAccent">#5266ED</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowBackground">#F3F7F7</item>
+        <item name="android:windowBackground">#F7F8FC</item>
     </style>
     <style name="XiyanDarkTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:statusBarColor">#0C1218</item>
-        <item name="android:navigationBarColor">#172029</item>
-        <item name="android:colorAccent">#74E6CD</item>
+        <item name="android:statusBarColor">#0F1524</item>
+        <item name="android:navigationBarColor">#0F1524</item>
+        <item name="android:colorAccent">#98A6FF</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowBackground">#0C1218</item>
+        <item name="android:windowBackground">#0F1524</item>
     </style>
 </resources>

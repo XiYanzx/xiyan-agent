@@ -13,6 +13,8 @@ import io.xiyan.agent.core.model.ModelCatalog;
 import io.xiyan.agent.core.response.InferenceEvidence;
 import io.xiyan.agent.core.response.ServiceFailure;
 import io.xiyan.agent.core.response.SubscriptionTextRequest;
+import io.xiyan.agent.core.usage.QuotaSnapshot;
+import io.xiyan.agent.core.usage.ResponseTokenUsage;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -34,6 +36,7 @@ import org.json.JSONObject;
 
 /** Official public-client SIWC. No desktop credentials, API keys, or token-bearing diagnostics. */
 public final class SiwcClient {
+    static final String USAGE_CHECK_COMPLETED = "用量连接检查完成；本次只读取模型接口，未发送推理请求。";
     public interface Observer { void changed(); }
     public interface Browser { void open(URI authorizationUri); }
     public static final class Snapshot {
@@ -43,10 +46,13 @@ public final class SiwcClient {
         public final InferenceEvidence inferenceEvidence;
         public final ServiceFailure lastFailure;
         public final ModelCatalog catalog;
+        public final QuotaSnapshot quota;
+        public final ResponseTokenUsage tokenUsage;
+        public final String usageMessage;
         Snapshot(boolean hasSession, boolean reauthRequired, long expiresAt, boolean busy,
                 String message, String accountLabel, ModelCatalog catalog, String inferenceText, String inferenceStatus,
                 String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure, String failureCode,
-                String catalogFormatJson, String streamFormatJson) {
+                String catalogFormatJson, String streamFormatJson, QuotaSnapshot quota, ResponseTokenUsage tokenUsage, String usageMessage) {
             this.hasSession = hasSession; this.reauthRequired = reauthRequired;
             this.expiresAtEpochSeconds = expiresAt;
             this.connected = hasSession && !reauthRequired && expiresAt > now();
@@ -57,6 +63,7 @@ public final class SiwcClient {
             this.failureCode = failureCode;
             this.catalogFormatJson = catalogFormatJson;
             this.streamFormatJson = streamFormatJson;
+            this.quota = quota; this.tokenUsage = tokenUsage; this.usageMessage = usageMessage;
         }
     }
     private interface Work { void run(long generation) throws Exception; }
@@ -83,6 +90,10 @@ public final class SiwcClient {
     private String failureCode;
     private String catalogFormatJson;
     private String streamFormatJson;
+    private QuotaSnapshot quota = QuotaSnapshot.unknown();
+    private ResponseTokenUsage tokenUsage;
+    private String usageScope;
+    private String usageMessage = "额度等待服务返回；最近一次调用尚无 token 统计。";
     private volatile Runnable inferenceCancellation;
     private long generation;
     private volatile ServerSocket callbackSocket;
@@ -95,7 +106,7 @@ public final class SiwcClient {
             if (saved != null) {
                 requireSession(saved);
                 synchronized (lock) {
-                    check(expected); session = saved;
+                    check(expected); session = saved; resetUsage(saved);
                     saveRegistration(saved.getString("clientId"), saved.getString("subject"));
                 }
                 progress(expected, "已读取手机上的加密会话；调用前会检查有效期。");
@@ -108,7 +119,7 @@ public final class SiwcClient {
         synchronized (lock) {
             return new Snapshot(session != null, reauthRequired, session == null ? 0 : session.optLong("expiresAt"), busy, message,
                     session == null ? "未连接" : session.optString("email", "已连接账号"), catalog, inferenceText, inferenceStatus,
-                    operationStage, inferenceEvidence, lastFailure, failureCode, catalogFormatJson, streamFormatJson);
+                    operationStage, inferenceEvidence, lastFailure, failureCode, catalogFormatJson, streamFormatJson, quota, tokenUsage, usageMessage);
         }
     }
     public void checkEnvironment() {
@@ -162,6 +173,7 @@ public final class SiwcClient {
                 progress(expected, "授权范围已通过，正在加密保存手机本机会话……");
                 synchronized (lock) {
                     check(expected); store.write(saved); session = saved; catalog = null; reauthRequired = false;
+                    resetUsage(saved);
                     inferenceText = ""; inferenceStatus = "idle"; inferenceEvidence = null;
                     saveRegistration(callback.getIssuedClientId(), identity.subject);
                 }
@@ -176,7 +188,8 @@ public final class SiwcClient {
             if (current.getLong("expiresAt") <= now() + 60) current = refresh(current, expected);
             check(expected);
             JSONObject response;
-            try { response = SiwcHttp.get(SiwcHttp.RESOURCE + "/models", current.getString("accessToken")); }
+            final String scope = accountScope(current);
+            try { response = SiwcHttp.get(SiwcHttp.RESOURCE + "/models", current.getString("accessToken"), observed -> observeUsage(expected, scope, observed)); }
             catch (SiwcHttp.Failure failure) { invalidateSession(current, failure); throw failure; }
             long fetched = System.currentTimeMillis();
             ModelCatalog result;
@@ -190,6 +203,36 @@ public final class SiwcClient {
                 session = current; catalog = result;
             }
             progress(expected, "已获取账号实时模型目录。推理结果待实际回合验证；思考选项采用返回的元数据。");
+        });
+    }
+    /** Checks the existing model endpoint and passively observes quota headers; never starts inference. */
+    public void refreshUsage() {
+        operate("正在检查服务返回的用量信息……", expected -> {
+            JSONObject current = null;
+            try {
+                synchronized (lock) { check(expected); usageMessage = "正在检查服务返回的用量信息……"; }
+                current = currentSession();
+                if (current.getLong("expiresAt") <= now() + 60) current = refresh(current, expected);
+                final String scope = accountScope(current);
+                synchronized (lock) { checkUsage(expected, scope); }
+                final boolean[] observed = {false};
+                SiwcHttp.get(SiwcHttp.RESOURCE + "/models", current.getString("accessToken"), update -> {
+                    observeUsage(expected, scope, update); observed[0] = true;
+                });
+                synchronized (lock) {
+                    checkUsage(expected, scope);
+                    usageMessage = observed[0] ? "已收到服务返回的额度信息。"
+                            : quota.hasData() ? "连接检查完成；本次未附带额度字段，保留上次采集时间。"
+                            : "连接检查完成；本次响应未附带额度字段。额度会随服务响应更新。";
+                }
+                progress(expected, USAGE_CHECK_COMPLETED);
+            } catch (Exception failure) {
+                if (current != null && failure instanceof SiwcHttp.Failure) invalidateSession(current, (SiwcHttp.Failure) failure);
+                synchronized (lock) {
+                    if (generation == expected) usageMessage = "本次用量检查未完成；保留此前记录及采集时间。";
+                }
+                throw failure;
+            }
         });
     }
     /** A user-submitted text request only; this entry point exposes no phone or runtime tools. */
@@ -211,6 +254,7 @@ public final class SiwcClient {
             }
             if (current.getLong("expiresAt") <= now() + 60) current = refresh(current, expected);
             check(expected);
+            final String scope = accountScope(current);
             JSONObject body = new JSONObject(SubscriptionTextRequest.create(selection.getRequestModel(), selection.getReasoningEffort(), prompt));
             progress(expected, "正在接收模型文本。收到完整结束事件后确认结果；可随时停止。");
             try {
@@ -226,10 +270,16 @@ public final class SiwcClient {
                         synchronized (lock) { check(); inferenceText = text; }
                         notifyChanged();
                     }
+                    @Override public void quota(QuotaSnapshot observed) throws IOException {
+                        observeUsage(expected, scope, observed);
+                    }
                 });
                 synchronized (lock) {
-                    check(expected); inferenceText = completed.text; inferenceEvidence = completed.evidence; inferenceStatus = "completed";
+                    checkUsage(expected, scope); inferenceText = completed.text; inferenceEvidence = completed.evidence; inferenceStatus = "completed";
                     streamFormatJson = completed.streamFormatJson;
+                    tokenUsage = completed.tokenUsage;
+                    usageMessage = tokenUsage == null ? "最近一次已完成调用未附带 token 统计。额度采用最近一次服务观测。"
+                            : "已收到最近一次完成调用的 token 统计。额度采用服务返回的百分比。";
                 }
                 progress(expected, "本次文本推理已完成，已收到官方 response.completed 事件。");
             } catch (SiwcHttp.Failure failure) {
@@ -247,6 +297,7 @@ public final class SiwcClient {
             JSONObject old;
             synchronized (lock) {
                 check(expected); old = session; store.clear(); session = null; catalog = null; reauthRequired = false;
+                resetUsage(null);
                 inferenceText = ""; inferenceStatus = "idle"; inferenceEvidence = null;
             }
             progress(expected, "本机会话已移除，正在请求官方撤销刷新令牌……");
@@ -269,6 +320,7 @@ public final class SiwcClient {
         synchronized (lock) {
             generation++; message = "已取消当前操作；手机上的账号会话保留。";
             if ("running".equals(inferenceStatus)) inferenceStatus = "cancelled";
+            if ("正在检查服务返回的用量信息……".equals(operationStage)) usageMessage = "用量检查已取消；保留此前记录及采集时间。";
         }
         Runnable cancellation = inferenceCancellation;
         if (cancellation != null) cancellation.run();
@@ -312,6 +364,24 @@ public final class SiwcClient {
             if (reauthRequired) throw new IOException("Session needs reauthorization");
             return new JSONObject(session.toString());
         }
+    }
+    private static String accountScope(JSONObject value) { return value.optString("clientId") + ":" + value.optString("subject"); }
+    private void resetUsage(JSONObject value) {
+        usageScope = value == null ? null : accountScope(value);
+        quota = QuotaSnapshot.unknown(); tokenUsage = null;
+        usageMessage = "额度等待服务返回；最近一次调用尚无 token 统计。";
+    }
+    private void checkUsage(long expected, String scope) throws IOException {
+        check(expected);
+        if (session == null || !scope.equals(usageScope) || !scope.equals(accountScope(session))) throw new IOException("Usage session changed");
+    }
+    private void observeUsage(long expected, String scope, QuotaSnapshot observed) throws IOException {
+        synchronized (lock) {
+            checkUsage(expected, scope);
+            if (!observed.hasData()) return;
+            quota = quota.merge(observed); usageMessage = "已收到服务返回的额度信息。";
+        }
+        notifyChanged();
     }
     private JSONObject refresh(JSONObject old, long expected) throws Exception {
         if (old.optString("refreshToken").isEmpty()) throw new IOException("Offline session renewal unavailable");

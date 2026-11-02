@@ -2,6 +2,7 @@
 package io.xiyan.agent.account;
 
 import io.xiyan.agent.core.response.ServiceFailure;
+import io.xiyan.agent.core.usage.QuotaSnapshot;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +17,7 @@ import org.json.JSONObject;
 
 /** Small bounded HTTPS client. Redirects never carry credentials to another origin. */
 final class SiwcHttp {
+    interface UsageObserver { void observed(QuotaSnapshot value) throws IOException; }
     static final String ISSUER = "https://auth.openai.com";
     static final String RESOURCE = "https://api.openai.com/v1";
     static final String DISCOVERY = ISSUER + "/.well-known/openid-configuration";
@@ -58,12 +60,13 @@ final class SiwcHttp {
             return uri.toASCIIString();
         } catch (java.net.URISyntaxException bad) { throw new IOException("Invalid authentication endpoint"); }
     }
-    static JSONObject get(String url, String bearer) throws Exception { return request(url, null, bearer, false); }
+    static JSONObject get(String url, String bearer) throws Exception { return request(url, null, bearer, false, null); }
+    static JSONObject get(String url, String bearer, UsageObserver usage) throws Exception { return request(url, null, bearer, false, usage); }
     static JSONObject form(String url, Map<String, String> fields) throws Exception {
-        return request(authEndpoint(url), encode(fields), null, false);
+        return request(authEndpoint(url), encode(fields), null, false, null);
     }
     static void revoke(String url, Map<String, String> fields) throws Exception {
-        request(authEndpoint(url), encode(fields), null, true);
+        request(authEndpoint(url), encode(fields), null, true, null);
     }
     private static String encode(Map<String, String> fields) throws IOException {
         StringBuilder text = new StringBuilder();
@@ -74,12 +77,12 @@ final class SiwcHttp {
         }
         return text.toString();
     }
-    private static JSONObject request(String text, String form, String bearer, boolean allowEmpty) throws Exception {
+    private static JSONObject request(String text, String form, String bearer, boolean allowEmpty, UsageObserver usage) throws Exception {
         URL url = new URL(text);
         boolean auth = "auth.openai.com".equals(url.getHost());
         boolean api = "api.openai.com".equals(url.getHost()) && "/v1/models".equals(url.getPath()) && url.getQuery() == null;
         if (!"https".equals(url.getProtocol()) || url.getPort() != -1 || url.getUserInfo() != null
-                || url.getRef() != null || (!auth && !api) || (bearer != null && !api)) throw new IOException("Untrusted HTTPS origin");
+                || url.getRef() != null || (!auth && !api) || (bearer != null && !api) || usage != null && !api) throw new IOException("Untrusted HTTPS origin");
         HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
         long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
         try {
@@ -97,6 +100,8 @@ final class SiwcHttp {
                 try (java.io.OutputStream output = connection.getOutputStream()) { output.write(bytes); }
             }
             int status = connection.getResponseCode();
+            long observedAt = System.currentTimeMillis();
+            observeUsage(connection, observedAt, usage);
             if (status < 200 || status >= 300) throw readFailure(connection, deadline);
             try (InputStream input = connection.getInputStream()) {
                 ByteArrayOutputStream body = new ByteArrayOutputStream();
@@ -106,10 +111,16 @@ final class SiwcHttp {
                     if (body.size() + count > 2 * 1024 * 1024) throw new IOException("HTTPS response limit exceeded");
                     body.write(buffer, 0, count);
                 }
+                observeUsage(connection, observedAt, usage);
                 if (body.size() == 0 && allowEmpty) return new JSONObject();
                 return new JSONObject(new String(body.toByteArray(), StandardCharsets.UTF_8));
             }
         } finally { connection.disconnect(); }
+    }
+    private static void observeUsage(HttpsURLConnection connection, long observedAt, UsageObserver observer) throws IOException {
+        if (observer == null) return;
+        QuotaSnapshot observed = SiwcUsage.headers(connection, observedAt, QuotaSnapshot.Source.MODEL_HEADERS);
+        if (observed.hasData()) observer.observed(observed);
     }
     static Failure readFailure(HttpsURLConnection connection, long deadline) throws IOException {
         // Retain fixed protocol codes only; raw service bodies never enter diagnostics.

@@ -5,6 +5,8 @@ import io.xiyan.agent.core.response.SseReader;
 import io.xiyan.agent.core.response.InferenceEvidence;
 import io.xiyan.agent.core.response.ServiceFailure;
 import io.xiyan.agent.core.response.ResponseContentTypePolicy;
+import io.xiyan.agent.core.usage.QuotaSnapshot;
+import io.xiyan.agent.core.usage.ResponseTokenUsage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -26,6 +28,7 @@ final class SiwcInference {
         void check() throws IOException;
         void opened(Runnable cancel) throws IOException;
         void partial(String text) throws IOException;
+        default void quota(QuotaSnapshot observed) throws IOException { check(); }
     }
     static final class Failure extends IOException {
         final String reason;
@@ -45,8 +48,10 @@ final class SiwcInference {
         final String text;
         final InferenceEvidence evidence;
         final String streamFormatJson;
-        Result(String text, InferenceEvidence evidence, String streamFormatJson) {
+        final ResponseTokenUsage tokenUsage;
+        Result(String text, InferenceEvidence evidence, String streamFormatJson, ResponseTokenUsage tokenUsage) {
             this.text = text; this.evidence = evidence; this.streamFormatJson = streamFormatJson;
+            this.tokenUsage = tokenUsage;
         }
     }
     private SiwcInference() { }
@@ -61,6 +66,7 @@ final class SiwcInference {
         StringBuilder text = new StringBuilder();
         StreamFormatTrace trace = new StreamFormatTrace();
         final InferenceEvidence[] evidence = {null};
+        final ResponseTokenUsage[] tokenUsage = {null};
         try {
             control.opened(connection::disconnect);
             control.check();
@@ -77,6 +83,8 @@ final class SiwcInference {
             try (OutputStream output = connection.getOutputStream()) { output.write(request); }
             control.check();
             int status = connection.getResponseCode();
+            long observedAt = System.currentTimeMillis();
+            observeQuota(connection, observedAt, control);
             if (status < 200 || status >= 300) throw SiwcHttp.readFailure(connection, deadline);
             String requestId = connection.getHeaderField("x-request-id");
             String contentType = connection.getContentType();
@@ -103,7 +111,10 @@ final class SiwcInference {
                             trace.reject("event_type_mismatch");
                             throw new Failure("invalid_stream");
                         }
-                        if ("response.output_text.delta".equals(type) || "response.refusal.delta".equals(type)) {
+                        if ("codex.rate_limits".equals(type)) {
+                            QuotaSnapshot quota = SiwcUsage.event(value, System.currentTimeMillis());
+                            if (quota.hasData()) { control.check(); control.quota(quota); }
+                        } else if ("response.output_text.delta".equals(type) || "response.refusal.delta".equals(type)) {
                             parsing = "output_delta_access";
                             Object delta = value.get("delta");
                             if (!(delta instanceof String) || text.length() + ((String) delta).length() > 32768) {
@@ -124,6 +135,7 @@ final class SiwcInference {
                                 throw new Failure("invalid_stream");
                             }
                             evidence[0] = evidence(response, "completed", started);
+                            tokenUsage[0] = SiwcUsage.tokens(response, System.currentTimeMillis());
                             return true;
                         } else if ("response.failed".equals(type)) {
                             parsing = "failed_response_access";
@@ -146,7 +158,8 @@ final class SiwcInference {
                 control.check();
                 if (!complete) { trace.reject("eof_without_completion"); throw new Failure("interrupted_stream"); }
             }
-            return new Result(text.toString(), evidence[0], trace.json());
+            observeQuota(connection, observedAt, control);
+            return new Result(text.toString(), evidence[0], trace.json(), tokenUsage[0]);
         } catch (Exception failure) {
             if (failure instanceof SiwcHttp.Failure) throw failure;
             if (failure instanceof Failure) {
@@ -160,6 +173,11 @@ final class SiwcInference {
             if (timedOut.get()) throw new SocketTimeoutException("Text inference deadline exceeded");
             throw failure;
         } finally { timeout.cancel(true); watchdog.shutdownNow(); connection.disconnect(); }
+    }
+
+    private static void observeQuota(HttpsURLConnection connection, long observedAt, Control control) throws IOException {
+        QuotaSnapshot observed = SiwcUsage.headers(connection, observedAt, QuotaSnapshot.Source.RESPONSE_HEADERS);
+        if (observed.hasData()) { control.check(); control.quota(observed); }
     }
 
     /** Fixed-shape trace: event payloads and unknown names/values never enter this object. */
@@ -216,10 +234,10 @@ final class SiwcInference {
             } catch (org.json.JSONException ignored) { return "{\"schemaVersion\":1,\"diagnosticError\":true}"; }
         }
         private static String eventName(String value) {
-            return value != null && (knownResponseName(value) || value.matches("error|message|ping")) ? value : "other";
+            return value != null && (knownResponseName(value) || value.matches("error|message|ping|codex\\.rate_limits")) ? value : "other";
         }
         private static String typeName(String value) {
-            return knownResponseName(value) || value.matches("error|ping") ? value : "other";
+            return knownResponseName(value) || value.matches("error|ping|codex\\.rate_limits") ? value : "other";
         }
         private static boolean knownResponseName(String value) {
             switch (value) {

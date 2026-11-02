@@ -4,6 +4,8 @@ Xiyan Agent application and core source in this repository is licensed under GPL
 
 No source or binary from Mobile Codex or a third-party Termux port is included in this P0 APK. Mobile Codex was reviewed as a research reference only; upstream references and versions are recorded in docs/P0-feasibility.md.
 
+The 2026-11-02 UI refresh also studies the layout and interaction patterns of Mobile Codex at commit 0bca7f0eed28eb3a3c9554db38e13d00136b95d0 (https://github.com/nokryong/mobile-codex). Its original code and artwork are GPL-3.0-only. Xiyan's native layout, palette and drawn icons are independently implemented; no upstream web bundle, logo or artwork is packaged. Reference paths are listed in docs/UI-REFRESH-MOBILE-CODEX.zh-CN.md.
+
 The P0 APK contains application Java code compiled with the Android SDK and uses Android platform APIs. It does not bundle Codex, V8, Rust runtime artifacts, Android NDK libraries, or an external AI SDK.
 
 Build and test tools, not bundled in the APK:

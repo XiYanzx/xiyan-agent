@@ -11,6 +11,8 @@ import io.xiyan.agent.BuildConfig;
 import io.xiyan.agent.core.model.ModelCatalog;
 import io.xiyan.agent.core.response.InferenceEvidence;
 import io.xiyan.agent.core.response.ServiceFailure;
+import io.xiyan.agent.core.usage.QuotaSnapshot;
+import io.xiyan.agent.core.usage.ResponseTokenUsage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -58,7 +60,7 @@ final class LiveAccountVerifier {
             finally { finished.run(); }
             return;
         }
-        if (!"catalog".equals(mode) && !"verify".equals(mode)) {
+        if (!"catalog".equals(mode) && !"verify".equals(mode) && !"usage".equals(mode)) {
             publishQuietly(destination, report, "invalid_arguments"); finished.run(); return;
         }
         if (account.snapshot().busy || !ACTIVE.compareAndSet(false, true)) {
@@ -82,7 +84,7 @@ final class LiveAccountVerifier {
         try {
             String mode = arguments.getString("mode", "inspect");
             report.put("schemaVersion", 1).put("requestId", requestId)
-                    .put("mode", mode.matches("inspect|catalog|verify") ? mode : "invalid")
+                    .put("mode", mode.matches("inspect|catalog|verify|usage") ? mode : "invalid")
                     .put("sourceCommit", BuildConfig.SOURCE_COMMIT).put("sourceTreeClean", BuildConfig.SOURCE_TREE_CLEAN)
                     .put("processId", android.os.Process.myPid()).put("configuredServiceTier", "default")
                     .put("credentialsExported", false).put("startedAtEpochMillis", System.currentTimeMillis());
@@ -96,6 +98,13 @@ final class LiveAccountVerifier {
         safeState(report, snapshot);
         if (snapshot.busy) return "operation_in_progress";
         if (!snapshot.hasSession || snapshot.reauthRequired) return "authorization_required";
+        if ("usage".equals(arguments.getString("mode"))) {
+            if (!beginOnMain(account, account::refreshUsage)) return "operation_in_progress";
+            snapshot = idle(account, Math.min(deadline, SystemClock.elapsedRealtime() + 75000));
+            safeState(report, snapshot);
+            return snapshot.failureCode != null ? "usage_failed"
+                    : SiwcClient.USAGE_CHECK_COMPLETED.equals(snapshot.operationStage) ? "usage_checked" : "usage_not_completed";
+        }
         if ("verify".equals(arguments.getString("mode"))) {
             String marker = arguments.getString("marker"), model = arguments.getString("modelId");
             if (marker == null || !marker.matches("[A-Z0-9_:-]{6,50}") || model == null || model.isEmpty() || model.length() > 256) return "invalid_arguments";
@@ -169,6 +178,10 @@ final class LiveAccountVerifier {
                 .put("reauthRequired", snapshot.reauthRequired).put("busy", snapshot.busy)
                 .put("operationStage", snapshot.operationStage).put("failureCode", nullable(snapshot.failureCode))
                 .put("inferenceStatus", snapshot.inferenceStatus);
+        long now = System.currentTimeMillis();
+        target.put("quota", quota(snapshot.quota, now)).put("tokenUsage", snapshot.tokenUsage == null ? JSONObject.NULL : tokens(snapshot.tokenUsage));
+        if (snapshot.inferenceEvidence != null) target.put("completionEvidence", completion(snapshot.inferenceEvidence));
+        else target.remove("completionEvidence");
         if (snapshot.catalogFormatJson != null) target.put("catalogFormat", new JSONObject(snapshot.catalogFormatJson));
         else target.remove("catalogFormat");
         if (snapshot.streamFormatJson != null) target.put("streamFormat", new JSONObject(snapshot.streamFormatJson));
@@ -178,6 +191,30 @@ final class LiveAccountVerifier {
                 .put("kind", failure.getKind().name()).put("code", nullable(failure.getCode()))
                 .put("param", nullable(failure.getParam())).put("requestId", nullable(failure.getRequestId())));
         else target.remove("serviceFailure");
+    }
+
+    private static JSONObject quota(QuotaSnapshot value, long now) throws Exception {
+        QuotaSnapshot.Credits credits = value.getCredits();
+        return new JSONObject().put("source", value.getSource().name()).put("hasData", value.hasData())
+                .put("observedAtEpochMillis", value.getObservedAtEpochMillis()).put("stale", value.isStale(now))
+                .put("primary", window(value.getPrimary(), now)).put("secondary", window(value.getSecondary(), now))
+                .put("credits", credits == null ? JSONObject.NULL : new JSONObject().put("hasCredits", nullable(credits.getHasCredits()))
+                        .put("unlimited", nullable(credits.getUnlimited())).put("balance", nullable(credits.getBalance()))
+                        .put("source", credits.getSource().name()).put("observedAtEpochMillis", credits.getObservedAtEpochMillis()).put("stale", credits.isStale(now)));
+    }
+
+    private static Object window(QuotaSnapshot.Window window, long now) throws Exception {
+        return window == null ? JSONObject.NULL : new JSONObject().put("usedPercent", window.getUsedPercent())
+                .put("remainingPercent", window.getRemainingPercent()).put("windowMinutes", nullable(window.getWindowMinutes()))
+                .put("resetsAtEpochSeconds", nullable(window.getResetsAtEpochSeconds()))
+                .put("source", window.getSource().name()).put("observedAtEpochMillis", window.getObservedAtEpochMillis()).put("stale", window.isStale(now));
+    }
+
+    private static JSONObject tokens(ResponseTokenUsage value) throws Exception {
+        return new JSONObject().put("inputTokens", nullable(value.getInputTokens())).put("outputTokens", nullable(value.getOutputTokens()))
+                .put("totalTokens", nullable(value.getTotalTokens())).put("cachedTokens", nullable(value.getCachedTokens()))
+                .put("cacheWriteTokens", nullable(value.getCacheWriteTokens())).put("reasoningTokens", nullable(value.getReasoningTokens()))
+                .put("observedAtEpochMillis", value.getObservedAtEpochMillis());
     }
 
     private static JSONObject completion(InferenceEvidence evidence) throws Exception {
@@ -215,6 +252,8 @@ final class LiveAccountVerifier {
             case "operation_in_progress": return "应用正在处理其他操作，本次验证未启动。";
             case "authorization_required": return "当前进程尚无可用于验证的已保存会话。";
             case "catalog_verified": return "已收到当前账号的模型目录。";
+            case "usage_checked": return "已检查服务返回的用量字段；缺失值保持未知。";
+            case "usage_not_completed": return "本次用量检查尚未完成，已有观测时间保留。";
             case "inference_verified": return "本次合成文本验证已完成。";
             case "unexpected_service_tier": return "服务返回了加速级别，请检查处理级别证据。";
             case "invalid_arguments": return "本次验证参数未通过校验。";
