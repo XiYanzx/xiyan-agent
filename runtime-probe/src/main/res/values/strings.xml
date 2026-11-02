@@ -3,10 +3,10 @@
     <string name="export_evidence">导出最近的 JSON 证据</string>
     <string name="export_failed">导出失败：%1$s\n%2$s</string>
     <string name="run_v8">运行离线 V8 固定算式</string>
-    <string name="run_mcp">验证离线 MCP 工具目录</string>
+    <string name="run_mcp">验证离线 MCP 工具回合</string>
     <string name="export_init_short">导出初始化</string>
     <string name="export_v8_short">导出 V8</string>
     <string name="export_mcp_short">导出 MCP</string>
     <string name="running_v8">正在校验官方 helper 并执行唯一固定算式……</string>
-    <string name="running_mcp">正在发现自有离线 MCP 工具目录；不调用模型或工具……</string>
+    <string name="running_mcp">正在发现本应用的 MCP 目录并调用固定回显工具，不发起模型回合……</string>
 </resources>

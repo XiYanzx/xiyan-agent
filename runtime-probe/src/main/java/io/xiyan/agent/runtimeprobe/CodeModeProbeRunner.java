@@ -193,6 +193,7 @@ final class CodeModeProbeRunner {
                         .put("sessionClosed", sessionClosed).put("failure", failure == null ? JSONObject.NULL : failure)
                         .put("stopReason", run.reason == null ? JSONObject.NULL : run.reason).put("cleanup", cleanup)
                         .put("receivedFrames", reader == null ? new JSONArray() : reader.snapshot())
+                        .put("stdoutReadError", reader == null || reader.failure == null ? JSONObject.NULL : reader.failure)
                         .put("stderr", stderr == null ? "" : stderr.snapshot()).put("elapsedMillis", SystemClock.elapsedRealtime() - started)
                         .put("status", status).put("summaryZh", "offline_v8_passed".equals(status)
                                 ? "当前设备离线 V8 返回 v8-probe:2；不代表模型、MCP、exec-server 或手机动作通过。"

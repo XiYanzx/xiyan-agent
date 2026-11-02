@@ -92,6 +92,7 @@ final class ProbeRunner {
         ScheduledFuture<?> deadline = null;
         boolean initialized = false;
         boolean mcpCatalogVerified = false;
+        boolean mcpCallVerified = false;
         File directory = null;
         String failure = null;
         try {
@@ -104,7 +105,7 @@ final class ProbeRunner {
             report.put("androidApi", Build.VERSION.SDK_INT);
             report.put("deviceAbis", new JSONArray(Build.SUPPORTED_ABIS));
             report.put("pageSize", Os.sysconf(OsConstants._SC_PAGESIZE));
-            report.put("scope", run.mcp ? "Offline threadless MCP tool catalog discovery only" : "Native app-server startup and initialize only");
+            report.put("scope", run.mcp ? "Offline MCP catalog and fixed echo tool call in a fresh ephemeral thread; no model turn" : "Native app-server startup and initialize only");
             report.put("accountLoginTested", false);
             report.put("inferenceTested", false);
             report.put("v8Tested", false);
@@ -211,6 +212,38 @@ final class ProbeRunner {
                     throw new IOException("Unexpected MCP fixture catalog");
                 }
                 mcpCatalogVerified = true;
+                // Upstream thread creation can schedule auth prewarm. This APK
+                // has no INTERNET permission and this CODEX_HOME has no credentials.
+                // Do not alter provider identity or manufacture auth to make it pass.
+                String probeCwd = directory.getCanonicalPath();
+                writeLine(process.getOutputStream(), new JSONObject().put("id", 3).put("method", "thread/start")
+                        .put("params", new JSONObject().put("cwd", probeCwd).put("ephemeral", true)));
+                JSONObject threadResponse = awaitResponse(stdout, run, 3, SystemClock.elapsedRealtime() + RESPONSE_MS);
+                report.put("threadStartResponse", threadResponse);
+                if (threadResponse.has("error")) throw new IOException("Offline thread/start returned an error");
+                JSONObject threadResult = threadResponse.getJSONObject("result");
+                JSONObject thread = threadResult.getJSONObject("thread");
+                String threadId = thread.getString("id");
+                if (threadId.isEmpty() || !thread.getBoolean("ephemeral") || !thread.isNull("path")
+                        || !probeCwd.equals(thread.getString("cwd"))
+                        || !probeCwd.equals(threadResult.getString("cwd"))) {
+                    throw new IOException("Unexpected ephemeral thread identity or directory");
+                }
+                report.put("mcpToolCallTested", true);
+                writeLine(process.getOutputStream(), new JSONObject().put("id", 4).put("method", "mcpServer/tool/call")
+                        .put("params", new JSONObject().put("threadId", threadId).put("server", "xiyan_probe")
+                                .put("tool", "xiyan_echo").put("arguments", new JSONObject().put("text", "xiyan-mcp-probe"))));
+                JSONObject callResponse = awaitResponse(stdout, run, 4, SystemClock.elapsedRealtime() + RESPONSE_MS);
+                report.put("mcpToolCallResponse", callResponse);
+                if (callResponse.has("error")) throw new IOException("Offline MCP tool call returned an error");
+                JSONObject callResult = callResponse.getJSONObject("result");
+                JSONArray content = callResult.getJSONArray("content");
+                if (!(callResult.opt("isError") instanceof Boolean) || callResult.getBoolean("isError") || content.length() != 1
+                        || !"text".equals(content.getJSONObject(0).getString("type"))
+                        || !"xiyan-mcp-probe".equals(content.getJSONObject(0).getString("text"))) {
+                    throw new IOException("MCP fixed echo output mismatch");
+                }
+                mcpCallVerified = true;
             }
         } catch (Exception problem) {
             failure = problem.getClass().getSimpleName() + ": " + problem.getMessage();
@@ -223,6 +256,7 @@ final class ProbeRunner {
                 report.put("initializeCompleted", initialized);
                 if (run.mcp) {
                     report.put("mcpCatalogVerified", mcpCatalogVerified);
+                    report.put("mcpToolCallVerified", mcpCallVerified);
                     JSONObject fixture;
                     try { fixture = verifyFixtureStopped(directory); }
                     catch (Exception error) { fixture = new JSONObject().put("verified", false)
@@ -242,11 +276,11 @@ final class ProbeRunner {
                         cleanup.optBoolean("verified"), exitCode,
                         cleanup.optBoolean("exitedBeforeShutdown"), cleanup.optBoolean("destroyRequested")
                                 || cleanup.optBoolean("forcedStopRequested"));
-                if (run.mcp) status = mcpCatalogVerified && "native_initialize_passed".equals(status)
-                        ? "offline_mcp_catalog_passed" : "offline_mcp_catalog_not_passed";
+                if (run.mcp) status = mcpCatalogVerified && mcpCallVerified && "native_initialize_passed".equals(status)
+                        ? "offline_mcp_tool_call_passed" : "offline_mcp_tool_call_not_passed";
                 report.put("status", status);
                 report.put("summaryZh", run.mcp
-                        ? ("offline_mcp_catalog_passed".equals(status) ? "离线 MCP 工具目录已通过；未调用工具、模型或账号。" : "离线 MCP 工具目录未通过；请检查证据。")
+                        ? ("offline_mcp_tool_call_passed".equals(status) ? "离线 MCP 固定回显工具调用通过；未发起模型回合或账号登录。" : "离线 MCP 工具回合未通过；请检查目录、线程、调用与清理证据。")
                         : "native_initialize_passed".equals(status)
                         ? "当前设备原生 initialize 完成；不代表 V8、登录、推理或其他 ABI 通过。"
                         : "native_initialize_shutdown_uncertain".equals(status)
@@ -316,17 +350,34 @@ final class ProbeRunner {
         try (InputStream input = new FileInputStream(pids)) { text = new String(readBounded(input, 1024), StandardCharsets.UTF_8); }
         JSONArray records = new JSONArray();
         boolean verified = true;
-        for (String line : text.trim().split("\\s+")) {
+        String[] pidLines = text.trim().split("\\s+");
+        if (pidLines.length > 4) throw new IOException("Unexpected fixture process count");
+        for (String line : pidLines) {
             int pid = Integer.parseInt(line);
             if (pid <= 0) throw new IOException("Invalid fixture PID");
-            boolean stopped = false;
-            for (int attempt = 0; attempt < 6; attempt++) {
-                try { Os.kill(pid, 0); }
-                catch (ErrnoException error) { if (error.errno == OsConstants.ESRCH) stopped = true; else throw error; }
-                if (stopped) break;
-                Thread.sleep(50);
+            JSONObject record = new JSONObject().put("pid", pid);
+            boolean stopped = waitForFixtureExit(pid, 300);
+            if (!stopped) {
+                // A cancelled app-server may not finish its own child cleanup.
+                // Signal only a process whose UID and command still identify our fixture.
+                boolean ownFixture = Os.stat("/proc/" + pid).st_uid == android.os.Process.myUid();
+                try (InputStream input = new FileInputStream("/proc/" + pid + "/cmdline")) {
+                    ownFixture &= new String(readBounded(input, 4096), StandardCharsets.UTF_8)
+                            .contains("io.xiyan.agent.runtimeprobe.LocalMcpFixture");
+                }
+                record.put("ownFixtureIdentityVerified", ownFixture);
+                if (ownFixture) {
+                    Os.kill(pid, OsConstants.SIGTERM);
+                    record.put("termRequested", true);
+                    stopped = waitForFixtureExit(pid, 500);
+                    if (!stopped) {
+                        Os.kill(pid, OsConstants.SIGKILL);
+                        record.put("killRequested", true);
+                        stopped = waitForFixtureExit(pid, 500);
+                    }
+                }
             }
-            records.put(new JSONObject().put("pid", pid).put("stopped", stopped));
+            records.put(record.put("stopped", stopped));
             verified &= stopped;
         }
         File events = new File(directory, "mcp-fixture-events.txt");
@@ -334,6 +385,19 @@ final class ProbeRunner {
             result.put("events", new String(readBounded(input, 4096), StandardCharsets.UTF_8));
         }
         return result.put("verified", verified).put("processes", records);
+    }
+
+    private static boolean waitForFixtureExit(int pid, long millis) throws Exception {
+        long end = SystemClock.elapsedRealtime() + millis;
+        do {
+            try { Os.kill(pid, 0); }
+            catch (ErrnoException error) {
+                if (error.errno == OsConstants.ESRCH) return true;
+                throw error;
+            }
+            Thread.sleep(50);
+        } while (SystemClock.elapsedRealtime() < end);
+        return false;
     }
 
     /** Classifies observations, without attributing an exit to a signal we cannot observe. */
@@ -397,7 +461,7 @@ final class ProbeRunner {
         final boolean mcp;
         private volatile Process process;
         volatile String reason;
-        private boolean forcedStopRequested;
+        private volatile boolean forcedStopRequested;
         Run(boolean mcp) { this.mcp = mcp; }
         synchronized void publish(Process child) {
             process = child;
@@ -408,7 +472,7 @@ final class ProbeRunner {
             if (process != null) { forcedStopRequested = true; process.destroyForcibly(); }
         }
         void check() throws IOException { if (reason != null) throw new IOException(reason); }
-        synchronized JSONObject cleanup() {
+        JSONObject cleanup() {
             JSONObject result = new JSONObject();
             try {
                 if (process == null) return result.put("verified", true).put("processStarted", false);
@@ -418,7 +482,11 @@ final class ProbeRunner {
                 result.put("stdinCloseRequested", true);
                 try { process.getOutputStream().close(); } catch (IOException ignored) { }
                 boolean destroyRequested = false;
-                if (!process.waitFor(500, TimeUnit.MILLISECONDS)) {
+                // The upstream EOF watchdog allows 45 seconds for normal shutdown.
+                // Do not hold this Run's monitor while waiting: UI stop must remain responsive.
+                long gracefulWait = mcp ? 50000 : 500;
+                result.put("gracefulExitWaitMillis", gracefulWait);
+                if (!process.waitFor(gracefulWait, TimeUnit.MILLISECONDS)) {
                     destroyRequested = true;
                     process.destroy();
                 }
