@@ -9,3 +9,5 @@ captures/
 toolchains/
 artifacts/
 *.hprof
+__pycache__/
+*.pyc

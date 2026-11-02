@@ -1,6 +1,6 @@
 # P0 开发与验证状态
 
-2026-11-02 UTC，Codex Cloud。开发按 GPT-6.1 Sol / Ultra 执行。**P0 尚未通过验收，P1–P6 未开始验收；当前 APK 是本机技术验证工具，尚无自主 Agent 能力。**
+2026-11-02 UTC。按最新授权转为本地 Windows 构建与测试；以下 Cloud 记录保留历史范围。开发按 GPT-6.1 Sol / Ultra 执行。**P0 尚未通过验收，P1–P6 未开始验收；当前 APK 是本机技术验证工具，尚无自主 Agent 能力。**
 
 ## 已有源码与构建证据
 
@@ -34,6 +34,6 @@
 
 ## GitHub与后续设备操作
 
-源码分支 `feature/p0-runtime`，draft [PR #1](https://github.com/XiYanzx/xiyan-agent/pull/1)；未批准或合并。早先两个 GitHub Actions 准备失败记录均已结束，工作流已删除。**编译、测试和打包只在 Codex Cloud，GitHub只保存源码和Release下载。**
+源码分支 `feature/p0-runtime`，draft [PR #1](https://github.com/XiYanzx/xiyan-agent/pull/1)；未批准或合并。早先两个 GitHub Actions 准备失败记录均已结束，工作流已删除。**编译、测试和打包改在用户本地 Windows，GitHub只保存源码和Release下载。**
 
 Release 仅可发布明确说明范围的 P0 prerelease。签名使用本次调试测试证书，未来正式密钥尚未配置。不会自动注册账户或索取明文凭据。手机用户后续需要按[安装指南](install.zh-CN.md)开启系统无障碍权限，完成真实截图、手势与撤销测试；账户接入及真机长周期测试另需对应实际授权和证据。

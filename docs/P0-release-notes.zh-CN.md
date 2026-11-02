@@ -10,6 +10,6 @@
 
 未内嵌 Codex app-server/code-mode-host，未接入账号登录、订阅额度、模型推理、通用任务、游戏策略与恢复监督器。Android 10 MediaProjection 截图、iQOO 12 Pro/Android 15 真机验收及 30/60/120 分钟测试均待执行。运行时路线证据见源码 `docs/runtime/`，最新测试证据见 `docs/testing/`。
 
-安装包使用 **Android 调试测试证书**，包名 `io.xiyan.agent.p0`，与未来正式应用隔离。此证书仅验证本次 APK 完整性，并非正式发行身份；不同云端构建的调试证书可能不同，覆盖安装失败时需要卸载旧 P0。正式签名密钥尚未配置。
+安装包使用 **Android 调试测试证书**，包名 `io.xiyan.agent.p0`，与未来正式应用隔离。此证书仅验证本次 APK 完整性，并非正式发行身份；本地与历史云端构建的调试证书可能不同，覆盖安装失败时需要卸载旧 P0。正式签名密钥尚未配置。本次发布从本地 Windows 干净源码构建；不使用 GitHub Actions。
 
 从本 Release 下载 APK、`SHA256SUMS.txt`、`APK-SIGNATURE.txt` 和 `BUILD-INFO.json`。`sha256sum -c SHA256SUMS.txt` 可核对下载文件。GitHub 的 Source code 压缩包是本 tag 的对应源码；构建方式见 `docs/build.zh-CN.md`。请按 `docs/install.zh-CN.md` 在手机手动授权和记录验证结果，勿将模拟器截图当作真机证据。

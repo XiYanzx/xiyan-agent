@@ -17,9 +17,27 @@ tools/package-p0.sh
 
 交付必须从干净的 Git commit 构建。APK 的 BuildConfig 与内嵌来源清单记录真实 buildCommit 和工作区状态；JUnit 结果另有同一次源码版本的来源文件。打包器读取 APK 实际字段并核对 manifest、源码 commit 与测试来源，不把当前 HEAD 盲写成旧 APK 的来源。缺少来源、工作区不干净或版本不一致会拒绝打包，先前有效产物不被覆盖。源码压缩包需先建立本地 Git 仓库并提交再构建，其来源标记是该本地 commit，不能冒充官方 tag；复核官方交付请使用对应 tag 的 Git checkout。
 
-Gradle wrapper 的发行包 SHA256 已固定在 `gradle/wrapper/gradle-wrapper.properties`。按[最新用户要求](REQUIREMENTS-ADDENDUM.zh-CN.md)，所有构建、lint、测试和 APK 打包仅在 Codex Cloud。仓库不包含 GitHub Actions 工作流；上传 Release 时直接使用对应 commit 的云端已验证产物，不二次编译。正式 P6 Release 需全部阶段与真机验收，P0 prerelease 不代替阶段验收；不自动批准或合并 PR。
+Gradle wrapper 的发行包 SHA256 已固定在 `gradle/wrapper/gradle-wrapper.properties`。按[最新用户要求](REQUIREMENTS-ADDENDUM.zh-CN.md)，所有构建、lint、测试和 APK 打包改在用户本地电脑。仓库不包含 GitHub Actions 工作流；上传 Release 时直接使用对应 commit 的本地已验证产物，不二次编译。正式 P6 Release 需全部阶段与真机验收，P0 prerelease 不代替阶段验收；不自动批准或合并 PR。
 
-## 当前 Codex Cloud 环境
+## Windows 本地构建
+
+复用完整 JDK 17，按 Google 官方 SDK 来源安装 SDK 35 与 Build Tools 35.0.0。建议将缓存和 Android 用户目录放在本任务目录，环境变量仅对当前 PowerShell 进程生效，不改全局系统配置。`ANDROID_USER_HOME` 中的调试签名密钥不得上传。
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Java\jdk-17'
+$env:ANDROID_HOME = 'C:\path\to\android-sdk'
+$env:ANDROID_USER_HOME = 'C:\path\to\private\android-user'
+$env:GRADLE_USER_HOME = 'C:\path\to\gradle-cache'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+.\gradlew.bat --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+if ($LASTEXITCODE -ne 0) { throw 'Gradle checks failed' }
+python tools\package_p0.py
+if ($LASTEXITCODE -ne 0) { throw 'P0 packaging failed' }
+```
+
+跨平台 Python 打包器与原 shell 打包器使用相同的 APK/DEX/manifest、干净 HEAD 和散列绑定 JUnit 验证器。Windows 使用 SDK 的 `apksigner.bat` / `zipalign.exe`；失败时不覆盖已有有效产物。`assembleRelease` 只证明 release variant 可编译，仍未生产签名，不作为安装下载。
+
+## 历史 Codex Cloud 环境
 
 工作区为 `/workspace/xiyan-agent`。工具链在 `/workspace/toolchains/`，缓存和 Android 用户目录在 `/workspace/.gradle`、`/workspace/.android`。只读 home 的 ADB 兼容设置若存在，是通过审批创建的 `.android` 目录链接；不修改 HOME、系统安全设置或网络策略。
 
