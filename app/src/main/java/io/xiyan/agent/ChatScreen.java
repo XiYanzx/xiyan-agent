@@ -80,6 +80,7 @@ final class ChatScreen implements ScreenContent {
         composer.addView(compactMenu,new LinearLayout.LayoutParams(Ui.dp(host,48),Ui.dp(host,48)));
         editor=new EditText(host);editor.setTextSize(16);editor.setTextColor(c.text);editor.setHintTextColor(c.muted);editor.setBackgroundColor(Color.TRANSPARENT);
         editor.setHint("说说你的想法…");editor.setContentDescription("消息输入，最多四千字");editor.setMinLines(1);editor.setMaxLines(5);
+        editor.setMinHeight(Ui.dp(host,48));editor.setMinimumHeight(Ui.dp(host,48));
         editor.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         editor.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);editor.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4000)});
         editor.setPadding(Ui.dp(host,10),Ui.dp(host,10),Ui.dp(host,10),Ui.dp(host,8));editor.setText(host.draft());draftHasContent=!host.draft().trim().isEmpty();editor.setMaxHeight(Ui.dp(host,140));

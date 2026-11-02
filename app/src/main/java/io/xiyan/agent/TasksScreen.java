@@ -29,7 +29,7 @@ final class TasksScreen implements ScreenContent {
         Ui.gap(host,page,20);LinearLayout progress=Ui.row(host);
         AgentIconView clock=new AgentIconView(host,AgentIconView.Icon.CLOCK,c.muted);clock.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         progress.addView(clock,new LinearLayout.LayoutParams(Ui.dp(host,24),Ui.dp(host,24)));
-        LinearLayout progressWords=Ui.column(host);progressWords.addView(Ui.text(host,"自动操作准备中",14,Ui.TEXT));
+        LinearLayout progressWords=Ui.column(host);progressWords.addView(Ui.text(host,"手机自动执行待接入",14,Ui.TEXT));
         progressWords.addView(Ui.text(host,"当前可先保存任务草稿。",12,Ui.MUTED));LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,-2,1);pp.setMargins(Ui.dp(host,12),0,0,0);progress.addView(progressWords,pp);page.addView(progress);
         Ui.section(host,page,"准备状态");
         accountState=preparation(page,AgentIconView.Icon.USER,"账号",()->host.navigate(MainActivity.Screen.ACCOUNT));
