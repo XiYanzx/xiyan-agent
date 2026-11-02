@@ -11,3 +11,4 @@ artifacts/
 *.hprof
 __pycache__/
 *.pyc
+/runtime-probe/src/main/jniLibs/
