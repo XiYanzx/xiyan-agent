@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package io.xiyan.agent.account;
 
+import io.xiyan.agent.core.response.ServiceFailure;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,12 +22,15 @@ final class SiwcHttp {
     static final class Failure extends IOException {
         final int status;
         final String code;
+        final ServiceFailure diagnostic;
         Failure(int status, String code) {
-            super("HTTPS request did not succeed"); this.status = status; this.code = code;
+            this(ServiceFailure.from(status, code, null, null));
         }
-        boolean requiresSignIn() {
-            return status == 401 || status == 403 || "invalid_grant".equals(code) || "invalid_client".equals(code);
+        Failure(ServiceFailure diagnostic) {
+            super("HTTPS request did not succeed"); this.diagnostic = diagnostic;
+            status = diagnostic.getHttpStatus(); code = diagnostic.getCode();
         }
+        boolean requiresSignIn() { return diagnostic.requiresSignIn(); }
     }
     static final class Discovery {
         final String issuer, authorize, token, revoke, jwks;
@@ -110,7 +114,8 @@ final class SiwcHttp {
     static Failure readFailure(HttpsURLConnection connection, long deadline) throws IOException {
         // Retain fixed protocol codes only; raw service bodies never enter diagnostics.
         int status = connection.getResponseCode();
-        String code = null;
+        String code = null, param = null;
+        String requestId = connection.getHeaderField("x-request-id");
         InputStream errors = connection.getErrorStream();
         if (errors != null) try (InputStream input = errors) {
             ByteArrayOutputStream body = new ByteArrayOutputStream();
@@ -118,8 +123,14 @@ final class SiwcHttp {
             while ((count = input.read(buffer)) != -1 && body.size() + count <= 8192
                     && System.nanoTime() < deadline) body.write(buffer, 0, count);
             Object value = new JSONObject(new String(body.toByteArray(), StandardCharsets.UTF_8)).opt("error");
-            if (value instanceof String && ("invalid_grant".equals(value) || "invalid_client".equals(value))) code = (String) value;
+            if (value instanceof String) code = (String) value;
+            else if (value instanceof JSONObject) {
+                Object returnedCode = ((JSONObject) value).opt("code");
+                Object returnedParam = ((JSONObject) value).opt("param");
+                if (returnedCode instanceof String) code = (String) returnedCode;
+                if (returnedParam instanceof String) param = (String) returnedParam;
+            }
         } catch (Exception ignored) { /* The HTTP status remains sufficient for a safe failure. */ }
-        return new Failure(status, code);
+        return new Failure(ServiceFailure.from(status, code, param, requestId));
     }
 }

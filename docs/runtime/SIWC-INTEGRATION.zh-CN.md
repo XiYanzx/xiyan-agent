@@ -19,11 +19,17 @@
 | `IdTokenVerifier` / `TokenClaimsPolicy` | 从可信发现文档读取 JWKS，验证 RS256 签名及 issuer、audience、azp、nonce、时间和账号身份；存在 `at_hash` 时校验绑定 |
 | `SessionStore` | Android Keystore 密钥、AES-GCM、AtomicFile 和应用私有非备份目录；统一限制明文和加密文件大小 |
 | `SiwcClient` | 读取本机会话、官方发现文档检查、显式登录、账号目录刷新、取消、同账号重连及退出 |
-| `SiwcInference` | 手动发起一次纯文本推理，按实际目录校验模型与思考程度；标准服务级别 `default`、输入上限 4000 字符、输出上限 1024 token |
+| `SiwcInference` | 手动发起一次纯文本推理，按实际目录校验模型与思考程度；标准服务级别 `default`、输入上限 4000 字符，响应大小与耗时由本地限制 |
 
 回调读取使用单调时钟，单条 HTTP 请求最多五秒，整个等待过程最多五分钟。文本推理设置九十秒看门狗、十五秒连接与读取超时；SSE 总量上限 2 MiB，显示文本上限 32768 字符。停止会断开当前推理连接，递增取消代次，迟到的内容和结束事件随之失效。
 
 推理失败、未完成、连接中断、超时和取消分别保留状态。已接收的内容以预览形式展示；完整结束事件决定完成状态。该入口只处理文本，没有手机动作工具。
+
+`0.1.0-p0.3` 按官方订阅接口的预览规范，将 HTTP `input` 发送为消息数组，并省略该路线尚未支持的 `max_output_tokens`；继续使用本地九十秒期限、2 MiB 流上限和 32768 字符显示上限。请求构造与错误分类有独立回归测试。[官方预览限制](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations)
+
+HTTP 错误只保留经过长度和格式限制的状态码、错误代码、参数名及请求 ID。403 策略或路由限制保留本机会话，401 或 `invalid_grant` 提示重新连接。完成证据单独记录服务端响应 ID、实际报告的模型与服务等级、结束状态和耗时，缺少字段时保持未知。[官方错误与恢复](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery)
+
+调试测试 APK 提供显式 `live=true` 的安全验证入口，分开执行本机会话检查、实际目录刷新和一次合成文本回合。它通过应用自己的账号模块使用令牌，导出内容排除账号邮箱、subject、客户端身份、目录 accountScope 和凭据。每次推理生成独立随机标记，要求新的完成证据与对应合成结果一致；其他回合的文本保留在应用内存中。
 
 ## 会话与隐私
 

@@ -9,6 +9,9 @@ import android.os.SystemClock;
 import io.xiyan.agent.core.auth.LoopbackCallbackRequest;
 import io.xiyan.agent.core.auth.PendingSignIn;
 import io.xiyan.agent.core.model.ModelCatalog;
+import io.xiyan.agent.core.response.InferenceEvidence;
+import io.xiyan.agent.core.response.ServiceFailure;
+import io.xiyan.agent.core.response.SubscriptionTextRequest;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -35,16 +38,20 @@ public final class SiwcClient {
     public static final class Snapshot {
         public final boolean connected, hasSession, reauthRequired, busy;
         public final long expiresAtEpochSeconds;
-        public final String message, accountLabel, inferenceText, inferenceStatus;
+        public final String message, accountLabel, inferenceText, inferenceStatus, operationStage;
+        public final InferenceEvidence inferenceEvidence;
+        public final ServiceFailure lastFailure;
         public final ModelCatalog catalog;
         Snapshot(boolean hasSession, boolean reauthRequired, long expiresAt, boolean busy,
-                String message, String accountLabel, ModelCatalog catalog, String inferenceText, String inferenceStatus) {
+                String message, String accountLabel, ModelCatalog catalog, String inferenceText, String inferenceStatus,
+                String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure) {
             this.hasSession = hasSession; this.reauthRequired = reauthRequired;
             this.expiresAtEpochSeconds = expiresAt;
             this.connected = hasSession && !reauthRequired && expiresAt > now();
             this.busy = busy; this.message = message;
             this.accountLabel = accountLabel; this.catalog = catalog;
             this.inferenceText = inferenceText; this.inferenceStatus = inferenceStatus;
+            this.operationStage = operationStage; this.inferenceEvidence = inferenceEvidence; this.lastFailure = lastFailure;
         }
     }
     private interface Work { void run(long generation) throws Exception; }
@@ -65,6 +72,9 @@ public final class SiwcClient {
     private boolean busy;
     private boolean reauthRequired;
     private String inferenceText = "", inferenceStatus = "idle";
+    private String operationStage = "尚未开始";
+    private InferenceEvidence inferenceEvidence;
+    private ServiceFailure lastFailure;
     private volatile Runnable inferenceCancellation;
     private long generation;
     private volatile ServerSocket callbackSocket;
@@ -89,13 +99,17 @@ public final class SiwcClient {
     public Snapshot snapshot() {
         synchronized (lock) {
             return new Snapshot(session != null, reauthRequired, session == null ? 0 : session.optLong("expiresAt"), busy, message,
-                    session == null ? "未连接" : session.optString("email", "已连接账号"), catalog, inferenceText, inferenceStatus);
+                    session == null ? "未连接" : session.optString("email", "已连接账号"), catalog, inferenceText, inferenceStatus,
+                    operationStage, inferenceEvidence, lastFailure);
         }
     }
     public void checkEnvironment() {
         operate("正在核对官方登录端点……", expected -> {
             SiwcHttp.discovery(); check(expected);
-            progress(expected, "官方发现文档可达；当前仅检查网络与协议，尚未注册身份或登录。");
+            boolean hasSavedSession;
+            synchronized (lock) { hasSavedSession = session != null; }
+            progress(expected, hasSavedSession ? "官方发现文档可达；手机已保存会话，账号目录与推理状态分别验证。"
+                    : "官方发现文档可达；当前手机尚无已保存会话，可继续官方登录。");
         });
     }
     /** Call only from an explicit user sign-in action; the browser owns login and consent. */
@@ -125,19 +139,22 @@ public final class SiwcClient {
                 });
                 PendingSignIn.Callback callback = awaitCallback(server, pending, expected);
                 check(expected);
-                progress(expected, "已收到本机回调，正在交换并验证令牌……");
+                progress(expected, "已收到本机回调，正在交换官方令牌……");
                 Map<String, String> fields = new LinkedHashMap<>();
                 fields.put("grant_type", "authorization_code"); fields.put("client_id", callback.getIssuedClientId());
                 fields.put("code", callback.getCode()); fields.put("code_verifier", pending.getCodeVerifier());
                 fields.put("redirect_uri", pending.getRedirectUri().toASCIIString()); fields.put("resource", SiwcHttp.RESOURCE);
                 JSONObject token = SiwcHttp.form(discovery.token, fields);
+                progress(expected, "令牌交换响应已接收，正在验证 ID 签名……");
                 String access = tokenString(token, "access_token", true);
                 IdTokenVerifier.Verified identity = IdTokenVerifier.verify(tokenString(token, "id_token", true), access,
                         discovery, callback.getIssuedClientId(), pending.getNonce(), previousSubject, false);
+                progress(expected, "ID 签名已通过，正在验证订阅授权范围……");
                 JSONObject saved = tokenSession(token, callback.getIssuedClientId(), identity, pending.getNonce(), null);
+                progress(expected, "授权范围已通过，正在加密保存手机本机会话……");
                 synchronized (lock) {
                     check(expected); store.write(saved); session = saved; catalog = null; reauthRequired = false;
-                    inferenceText = ""; inferenceStatus = "idle";
+                    inferenceText = ""; inferenceStatus = "idle"; inferenceEvidence = null;
                     saveRegistration(callback.getIssuedClientId(), identity.subject);
                 }
                 progress(expected, "官方登录与 ID 签名校验完成，会话已加密保存在手机。可以刷新账号模型目录。");
@@ -168,7 +185,7 @@ public final class SiwcClient {
             ModelCatalog.Selection selection;
             JSONObject current;
             synchronized (lock) {
-                check(expected); inferenceText = ""; inferenceStatus = "running";
+                check(expected); inferenceText = ""; inferenceStatus = "running"; inferenceEvidence = null;
                 if (prompt == null || prompt.trim().isEmpty() || prompt.length() > 4000) {
                     throw new SiwcInference.Failure("invalid_prompt");
                 }
@@ -181,14 +198,10 @@ public final class SiwcClient {
             }
             if (current.getLong("expiresAt") <= now() + 60) current = refresh(current, expected);
             check(expected);
-            JSONObject body = new JSONObject().put("model", selection.getRequestModel()).put("input", prompt)
-                    .put("store", false).put("stream", true).put("service_tier", "default").put("max_output_tokens", 1024);
-            if (selection.getReasoningEffort() != null) {
-                body.put("reasoning", new JSONObject().put("effort", selection.getReasoningEffort()));
-            }
+            JSONObject body = new JSONObject(SubscriptionTextRequest.create(selection.getRequestModel(), selection.getReasoningEffort(), prompt));
             progress(expected, "正在接收模型文本。收到完整结束事件后确认结果；可随时停止。");
             try {
-                String completed = SiwcInference.run(current.getString("accessToken"), body, new SiwcInference.Control() {
+                SiwcInference.Result completed = SiwcInference.run(current.getString("accessToken"), body, new SiwcInference.Control() {
                     @Override public void check() throws IOException { SiwcClient.this.check(expected); }
                     @Override public void opened(Runnable cancel) throws IOException {
                         synchronized (lock) {
@@ -201,7 +214,9 @@ public final class SiwcClient {
                         notifyChanged();
                     }
                 });
-                synchronized (lock) { check(expected); inferenceText = completed; inferenceStatus = "completed"; }
+                synchronized (lock) {
+                    check(expected); inferenceText = completed.text; inferenceEvidence = completed.evidence; inferenceStatus = "completed";
+                }
                 progress(expected, "本次文本推理已完成，已收到官方 response.completed 事件。");
             } catch (SiwcHttp.Failure failure) {
                 invalidateSession(current, failure); throw failure;
@@ -218,7 +233,7 @@ public final class SiwcClient {
             JSONObject old;
             synchronized (lock) {
                 check(expected); old = session; store.clear(); session = null; catalog = null; reauthRequired = false;
-                inferenceText = ""; inferenceStatus = "idle";
+                inferenceText = ""; inferenceStatus = "idle"; inferenceEvidence = null;
             }
             progress(expected, "本机会话已移除，正在请求官方撤销刷新令牌……");
             if (old != null && !old.optString("refreshToken").isEmpty()) {
@@ -249,14 +264,22 @@ public final class SiwcClient {
     }
     private void operate(String status, Work work) {
         final long expected;
-        synchronized (lock) { if (busy) return; busy = true; expected = ++generation; message = status; }
+        synchronized (lock) {
+            if (busy) return; busy = true; expected = ++generation; message = status; operationStage = status; lastFailure = null;
+        }
         notifyChanged();
         worker.execute(() -> {
             try { work.run(expected); }
             catch (Exception error) {
                 synchronized (lock) {
                     if (generation == expected) {
-                        message = safeFailure(error);
+                        if (error instanceof SiwcHttp.Failure) lastFailure = ((SiwcHttp.Failure) error).diagnostic;
+                        if (error instanceof SiwcInference.Failure) {
+                            SiwcInference.Failure failure = (SiwcInference.Failure) error;
+                            lastFailure = failure.diagnostic;
+                            if (failure.evidence != null) inferenceEvidence = failure.evidence;
+                        }
+                        message = operationStage + "\n" + safeFailure(error);
                         if ("running".equals(inferenceStatus)) inferenceStatus = "failed";
                     }
                 }
@@ -421,7 +444,7 @@ public final class SiwcClient {
         synchronized (lock) { if (generation != expected) throw new IOException("Operation cancelled"); }
     }
     private void progress(long expected, String text) throws IOException {
-        synchronized (lock) { check(expected); message = text; } notifyChanged();
+        synchronized (lock) { check(expected); operationStage = text; message = text; } notifyChanged();
     }
     private void notifyChanged() { main.post(() -> { for (Observer observer : observers) observer.changed(); }); }
     private static long now() { return System.currentTimeMillis() / 1000; }
@@ -434,6 +457,11 @@ public final class SiwcClient {
                 case "usage_limit": return "本次推理受到额度或频率限制，请查看官方 Usage 页面后重试。";
                 case "model_unavailable": return "当前模型未能完成请求，请刷新账号目录后重新选择。";
                 case "authorization_required": return "本次推理授权已失效，请重新登录。";
+                case "policy_restricted": return "官方策略或地区限制了本次请求，会话已保留。请检查返回的错误类别。";
+                case "route_unsupported": return "官方服务未支持本次请求的路由，会话已保留。";
+                case "unsupported_capability": return "本次请求包含服务未支持的能力，请检查返回的错误字段后调整。";
+                case "temporary_unavailable": return "官方服务暂时无法处理本次请求，会话已保留，可稍后重试。";
+                case "client_configuration": return "官方客户端配置未通过校验，请检查接入配置。";
                 case "incomplete": return "模型返回了未完成状态。已接收内容作为预览保留，可调整输入后重试。";
                 case "interrupted_stream": return "连接已结束，完整结果尚未确认。已接收内容作为预览保留。";
                 case "invalid_stream": return "收到的推理事件未通过格式校验，完整结果尚未确认。";
@@ -445,10 +473,17 @@ public final class SiwcClient {
         if (error instanceof SiwcHttp.Failure) {
             SiwcHttp.Failure failure = (SiwcHttp.Failure) error;
             int status = failure.status;
-            if ("invalid_grant".equals(failure.code) || "invalid_client".equals(failure.code)) return "授权需要重新连接，请使用原账号登录。";
-            if (status == 401) return "授权已失效，请重新登录。";
-            if (status == 403) return "官方服务拒绝了当前账号授权，请检查订阅资格与授权范围。";
-            if (status == 429) return "当前额度或请求频率受限，请稍后重试并查看官方 Usage 页面。";
+            switch (failure.diagnostic.getKind()) {
+                case AUTHORIZATION_REQUIRED: return "授权需要重新连接，请使用原账号登录。";
+                case CLIENT_CONFIGURATION: return "官方客户端配置未通过校验，请检查接入配置。";
+                case POLICY_RESTRICTED: return "官方策略或地区限制了本次请求，会话已保留。请检查返回的错误类别。";
+                case ROUTE_UNSUPPORTED: return "官方服务未支持本次请求的路由，会话已保留。";
+                case UNSUPPORTED_CAPABILITY: return "本次请求包含服务未支持的能力，请检查返回的错误字段后调整。";
+                case TEMPORARY_UNAVAILABLE: return "官方服务暂时无法处理本次请求，会话已保留，可稍后重试。";
+                case USAGE_LIMIT: return "当前额度或请求频率受限，请稍后重试并查看官方 Usage 页面。";
+                case MODEL_UNAVAILABLE: return "当前模型未能处理请求，请刷新账号目录后重新选择。";
+                default: break;
+            }
             return "官方服务请求未成功（HTTP " + status + "），未记录令牌或响应正文。";
         }
         if (error instanceof PendingSignIn.AuthException) return "登录回调未完成：" + ((PendingSignIn.AuthException) error).getReason().name();
