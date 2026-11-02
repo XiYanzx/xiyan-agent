@@ -1,0 +1,37 @@
+{
+  "scope": "Final APK limited Android 15 cloud-emulator validation; not P0 or physical-device acceptance",
+  "source_commit": "a2ac08dafdd33ca2dd8d408e10a78b89472cec74",
+  "apk_sha256": "827d1bd801d1c6de5681671ef30cc6a47908196c0310afe13709ca373091bdd2",
+  "installed_base_apk_sha256": "827d1bd801d1c6de5681671ef30cc6a47908196c0310afe13709ca373091bdd2",
+  "started_utc": "2026-11-02T03:48:07Z",
+  "finished_utc": "2026-11-02T03:57:59.098242+00:00",
+  "recorded_adb_commands": 34,
+  "all_recorded_adb_commands_exit_zero": true,
+  "git_clean_after_run": true,
+  "ui_automation_used": false,
+  "permission_fixture": "Existing previously approved emulator Accessibility service; no additional grant performed",
+  "passed": [
+    "APK install",
+    "WARM activity launch (Status ok; TotalTime 8303ms)",
+    "Home and TestPad navigation",
+    "Accessibility service remains enabled and bound",
+    "App single tap verification: target count 0 -> 1; app reports verification passed",
+    "API35 app-window capture returned visible in-memory preview",
+    "Clear button removes displayed preview",
+    "Second capture produces a new visible preview",
+    "Stop button removes displayed preview and reports subsequent authorization revoked"
+  ],
+  "not_tested": [
+    "Cold app-process startup after fresh emulator boot",
+    "Accessibility permission denial/revocation for this final build",
+    "Swipe/long press/text input",
+    "Split-screen or overlay pixel isolation",
+    "Late-callback clear/stop race",
+    "Zero post-stop dispatch under an in-flight action race",
+    "Android10-13 capture behavior",
+    "Physical iQOO/ARM64/game control",
+    "OAuth, account model directory, inference, Codex runtime",
+    "30/60/120-minute stability"
+  ],
+  "remaining_blockers": []
+}
