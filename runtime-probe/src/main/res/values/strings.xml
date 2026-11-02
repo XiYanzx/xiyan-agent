@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Xiyan 运行时探针</string>
+    <string name="export_evidence">导出最近的 JSON 证据</string>
+    <string name="export_failed">导出失败：%1$s\n%2$s</string>
 </resources>

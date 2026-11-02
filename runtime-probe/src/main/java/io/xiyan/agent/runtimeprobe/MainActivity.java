@@ -52,7 +52,7 @@ public final class MainActivity extends Activity {
         stop.setEnabled(false);
         page.addView(stop);
         export = new Button(this);
-        export.setText("导出最近的 JSON 证据");
+        export.setText(R.string.export_evidence);
         page.addView(export);
         ScrollView scroll = new ScrollView(this);
         output = text("准备就绪。每次运行使用全新的应用私有目录。", 13);
@@ -115,7 +115,7 @@ public final class MainActivity extends Activity {
             if (stream == null) throw new java.io.IOException("未能打开导出目标");
             stream.write(exportSnapshot.getBytes(StandardCharsets.UTF_8));
         } catch (Exception failure) {
-            output.setText("导出失败：" + failure.getClass().getSimpleName() + "\n" + report);
+            output.setText(getString(R.string.export_failed, failure.getClass().getSimpleName(), report));
         } finally { exportSnapshot = null; }
     }
 }
