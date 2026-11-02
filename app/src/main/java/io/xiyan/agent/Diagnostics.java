@@ -4,6 +4,7 @@ package io.xiyan.agent;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
+import io.xiyan.agent.account.SiwcClient;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -14,8 +15,10 @@ public final class Diagnostics {
     // 同一进程中的所有 Activity 实例共享读改写边界，不能各自缓存事件数组。
     private static final Object LOCK = new Object();
     private final SharedPreferences preferences;
+    private final Context applicationContext;
 
     public Diagnostics(Context context) {
+        applicationContext = context.getApplicationContext();
         preferences = context.getSharedPreferences("p0-diagnostics", Context.MODE_PRIVATE);
     }
 
@@ -65,13 +68,18 @@ public final class Diagnostics {
                 report.put("application", "Xiyan Agent");
                 report.put("version", BuildConfig.VERSION_NAME);
                 report.put("sourceCommit", BuildConfig.SOURCE_COMMIT);
-            report.put("sourceTreeClean", BuildConfig.SOURCE_TREE_CLEAN);
+                report.put("sourceTreeClean", BuildConfig.SOURCE_TREE_CLEAN);
                 report.put("stage", "P0 — 未验收");
                 report.put("androidApi", Build.VERSION.SDK_INT);
                 report.put("abis", new JSONArray(Build.SUPPORTED_ABIS));
                 report.put("runtimeBundled", RuntimeProbe.isBundled());
-                report.put("accountAuthenticated", false);
-                report.put("modelInferenceTested", false);
+                SiwcClient.Snapshot account = SiwcClient.get(applicationContext).snapshot();
+                report.put("accountAuthenticated", account.connected);
+                report.put("accountSessionStored", account.hasSession);
+                report.put("accountRequiresReauthorization", account.reauthRequired);
+                report.put("accountEvidence", "Local verified session; server access is checked on each request");
+                report.put("modelInferenceTested", "completed".equals(account.inferenceStatus));
+                report.put("inferenceEvidenceScope", "Latest text request in this process");
                 report.put("physicalDeviceAcceptance", "未在本报告中确认");
                 report.put("events", events);
                 return report.toString(2);

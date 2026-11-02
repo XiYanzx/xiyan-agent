@@ -1,5 +1,7 @@
 # P0 开发与验证状态
 
+本轮当前状态见[本地 Work 接手报告](testing/work-local-2026-11-02.md)：`0.1.0-p0.2` 已加入新版界面、SIWC 账号基础与手动文本请求代码，真实账号验证等待用户官方授权；97 项 JVM 集成测试已通过。独立原生探针本轮在 x86_64 模拟器初始化、V8 与 MCP 均退出 159。下文保留早期 P0 的开发记录，最终发布范围以新报告和对应 Release 的验证附件为准。
+
 2026-11-02 UTC。按最新授权转为本地 Windows 构建与测试；以下 Cloud 记录保留历史范围。开发按 GPT-6.1 Sol / Ultra 执行。**P0 尚未通过验收，P1–P6 未开始验收；当前 APK 是本机技术验证工具，尚无自主 Agent 能力。**
 
 最新的本地源码、APK、35 项测试、Android15 模拟器和公开 Release 结果见 [Windows 本地复验](testing/local-windows-2026-11-02.md)。[本地运行时预检](runtime/LOCAL-WINDOWS-SPIKE.zh-CN.md)单列 NDK smoke 与 Windows/V8 主机构建前置，不沿用 Cloud 网络故障作为本机阻碍。

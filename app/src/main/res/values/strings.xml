@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Xiyan Agent · P0</string>
-    <string name="mode_preference">模式偏好：%1$s</string>
     <string name="tap_count">本页实际收到点击：%1$d 次</string>
     <string name="accessibility_service_description">P0 技术验证：读取窗口结构与截图；仅在应用内测试台显式授权后验证单步手势。截图仅留内存，不上传。可随时在系统关闭服务。</string>
 </resources>

@@ -61,7 +61,8 @@ def main():
         "timed_out": timed_out,
         "stdout": stdout_name,
         "stderr": stderr_name,
-        "platform": "cloud Android emulator; not a physical device",
+        "platform": "Android emulator",
+        "serial": args.serial,
     }
     (args.output / f"{args.name}.json").write_text(
         json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
