@@ -8,6 +8,8 @@
 
 模型选择读取当前 OAuth 会话的 `GET https://api.openai.com/v1/models`，按返回顺序显示 `visibility=list` 的条目，并保留 `slug`、名称及实际提供的推理参数。目录存在后，仍需完成推理请求来验证该次访问。文本请求发送至公开 Responses API，使用 `store:false`、`stream:true`；只有收到 `response.completed` 且响应状态为 `completed` 时，界面显示完成。[官方模型与推理说明](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)
 
+思考选项兼容官方 `supported_reasoning_levels:[{effort,...}]` 与 `default_reasoning_level`，同时保留已有 `supported_reasoning_efforts` 等字段格式。新增测试引用官方 Codex `6ff1e1ca3b30fc8b914720681fcf5fe62e95f856` 的公开模型元数据。目录校验失败时仅保存固定字段名、JSON 类型、数组长度和白名单成员键存在性；实际字段值留在应用内。
+
 后续嵌入 app-server 时，可通过独立 Responses provider 传入本应用的 OAuth 令牌。官方说明该配置下的 `model/list` 可能来自随客户端提供的目录；手机界面因此优先展示 OAuth 账号目录。本阶段文本请求直接走上述公开接口。[官方 app-server 接入说明](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server)
 
 ## 已实现的代码

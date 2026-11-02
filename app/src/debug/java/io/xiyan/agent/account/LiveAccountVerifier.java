@@ -169,6 +169,8 @@ final class LiveAccountVerifier {
                 .put("reauthRequired", snapshot.reauthRequired).put("busy", snapshot.busy)
                 .put("operationStage", snapshot.operationStage).put("failureCode", nullable(snapshot.failureCode))
                 .put("inferenceStatus", snapshot.inferenceStatus);
+        if (snapshot.catalogFormatJson != null) target.put("catalogFormat", new JSONObject(snapshot.catalogFormatJson));
+        else target.remove("catalogFormat");
         ServiceFailure failure = snapshot.lastFailure;
         if (failure != null) target.put("serviceFailure", new JSONObject().put("httpStatus", failure.getHttpStatus())
                 .put("kind", failure.getKind().name()).put("code", nullable(failure.getCode()))

@@ -97,6 +97,69 @@ public class ModelCatalogTest {
     }
 
     @Test
+    public void acceptsOfficialLevelsEffortAndDefaultLevelShape() {
+        // Selected public fields from openai/codex@6ff1e1ca3b30fc8b914720681fcf5fe62e95f856:
+        // codex-rs/models-manager/models.json, gpt-6.1-sol entry.
+        Map<String, Object> metadata = field("slug", "gpt-6.1-sol");
+        metadata.put("display_name", "GPT-6.1-Sol");
+        metadata.put("default_reasoning_level", "low");
+        metadata.put("supported_reasoning_levels", Arrays.asList(
+                field("effort", "low"), field("effort", "medium"), field("effort", "high"),
+                field("effort", "xhigh"), field("effort", "max"), field("effort", "ultra")));
+        ModelCatalog catalog = ModelCatalog.fromResponse(ModelCatalog.Source.ACCOUNT_MODELS,
+                "/v1/models", 1234, "fixture-account", field("models", Collections.singletonList(metadata)));
+
+        assertEquals("low", catalog.findModel("gpt-6.1-sol").getDefaultReasoningEffort());
+        assertEquals(Arrays.asList("low", "medium", "high", "xhigh", "max", "ultra"),
+                new ArrayList<>(catalog.findModel("gpt-6.1-sol").getReasoningEfforts()));
+        assertEquals("ultra", catalog.select("gpt-6.1-sol", "ultra", null).getReasoningEffort());
+        assertEquals(ModelCatalog.Availability.UNKNOWN, catalog.findModel("gpt-6.1-sol").getServerDeclaredAvailability());
+    }
+
+    @Test
+    public void acceptsEffortsArrayWithEffortMembersAndPreservesUnknownValues() {
+        Map<String, Object> metadata = model("future-model");
+        metadata.put("supported_reasoning_efforts", Collections.singletonList(field("effort", "server-future-effort")));
+        metadata.put("default_reasoning_effort", "server-future-effort");
+        ModelCatalog catalog = catalog(metadata);
+
+        assertEquals("server-future-effort", catalog.findModel("future-model").getDefaultReasoningEffort());
+        assertEquals("server-future-effort", catalog.select("future-model", "server-future-effort", null).getReasoningEffort());
+        assertReason(ModelCatalog.Rejection.UNSUPPORTED_REASONING_EFFORT,
+                () -> catalog.select("future-model", "invented-effort", null));
+    }
+
+    @Test
+    public void acceptsCamelCaseLevelAliasesWithoutChangingServerValues() {
+        Map<String, Object> metadata = model("future-level-model");
+        metadata.put("supportedReasoningLevels", Collections.singletonList(field("effort", "server-Level-v2")));
+        metadata.put("defaultReasoningLevel", "server-Level-v2");
+        ModelCatalog catalog = catalog(metadata);
+
+        assertEquals("server-Level-v2", catalog.findModel("future-level-model").getDefaultReasoningEffort());
+        assertEquals("server-Level-v2", catalog.select("future-level-model", "server-Level-v2", null).getReasoningEffort());
+    }
+
+    @Test
+    public void levelAliasesStillRejectInvalidDefaultsAndMalformedOptions() {
+        Map<String, Object> invalidDefault = model("invalid-default");
+        invalidDefault.put("supported_reasoning_levels", Collections.singletonList(field("effort", "declared")));
+        invalidDefault.put("default_reasoning_level", "undeclared");
+        assertThrows(IllegalArgumentException.class, () -> catalog(invalidDefault));
+
+        for (Object invalid : Arrays.asList("not-an-array", Collections.singletonList(field("effort", 42)),
+                Collections.singletonList(field("effort", "")), Collections.singletonList(true))) {
+            Map<String, Object> metadata = model("invalid-levels");
+            metadata.put("supported_reasoning_levels", invalid);
+            assertThrows(IllegalArgumentException.class, () -> catalog(metadata));
+        }
+        Map<String, Object> invalidDefaultType = model("invalid-default-type");
+        invalidDefaultType.put("supportedReasoningLevels", Collections.singletonList("declared"));
+        invalidDefaultType.put("defaultReasoningLevel", 42);
+        assertThrows(IllegalArgumentException.class, () -> catalog(invalidDefaultType));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void metadataIsAnImmutableDeepSnapshot() {
         Map<String, Object> extension = field("unknownField", "original-value");

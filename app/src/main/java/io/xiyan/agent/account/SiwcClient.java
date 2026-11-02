@@ -39,13 +39,14 @@ public final class SiwcClient {
     public static final class Snapshot {
         public final boolean connected, hasSession, reauthRequired, busy;
         public final long expiresAtEpochSeconds;
-        public final String message, accountLabel, inferenceText, inferenceStatus, operationStage, failureCode;
+        public final String message, accountLabel, inferenceText, inferenceStatus, operationStage, failureCode, catalogFormatJson;
         public final InferenceEvidence inferenceEvidence;
         public final ServiceFailure lastFailure;
         public final ModelCatalog catalog;
         Snapshot(boolean hasSession, boolean reauthRequired, long expiresAt, boolean busy,
                 String message, String accountLabel, ModelCatalog catalog, String inferenceText, String inferenceStatus,
-                String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure, String failureCode) {
+                String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure, String failureCode,
+                String catalogFormatJson) {
             this.hasSession = hasSession; this.reauthRequired = reauthRequired;
             this.expiresAtEpochSeconds = expiresAt;
             this.connected = hasSession && !reauthRequired && expiresAt > now();
@@ -54,6 +55,7 @@ public final class SiwcClient {
             this.inferenceText = inferenceText; this.inferenceStatus = inferenceStatus;
             this.operationStage = operationStage; this.inferenceEvidence = inferenceEvidence; this.lastFailure = lastFailure;
             this.failureCode = failureCode;
+            this.catalogFormatJson = catalogFormatJson;
         }
     }
     private interface Work { void run(long generation) throws Exception; }
@@ -78,6 +80,7 @@ public final class SiwcClient {
     private InferenceEvidence inferenceEvidence;
     private ServiceFailure lastFailure;
     private String failureCode;
+    private String catalogFormatJson;
     private volatile Runnable inferenceCancellation;
     private long generation;
     private volatile ServerSocket callbackSocket;
@@ -103,7 +106,7 @@ public final class SiwcClient {
         synchronized (lock) {
             return new Snapshot(session != null, reauthRequired, session == null ? 0 : session.optLong("expiresAt"), busy, message,
                     session == null ? "未连接" : session.optString("email", "已连接账号"), catalog, inferenceText, inferenceStatus,
-                    operationStage, inferenceEvidence, lastFailure, failureCode);
+                    operationStage, inferenceEvidence, lastFailure, failureCode, catalogFormatJson);
         }
     }
     public void checkEnvironment() {
@@ -166,7 +169,7 @@ public final class SiwcClient {
     }
     public void refreshModels() {
         operate("正在读取账号模型目录……", expected -> {
-            synchronized (lock) { catalog = null; }
+            synchronized (lock) { catalog = null; catalogFormatJson = null; }
             JSONObject current = currentSession();
             if (current.getLong("expiresAt") <= now() + 60) current = refresh(current, expected);
             check(expected);
@@ -174,7 +177,12 @@ public final class SiwcClient {
             try { response = SiwcHttp.get(SiwcHttp.RESOURCE + "/models", current.getString("accessToken")); }
             catch (SiwcHttp.Failure failure) { invalidateSession(current, failure); throw failure; }
             long fetched = System.currentTimeMillis();
-            ModelCatalog result = parseModels(response, fetched, current.getString("clientId") + ":" + current.getString("subject"));
+            ModelCatalog result;
+            try { result = parseModels(response, fetched, current.getString("clientId") + ":" + current.getString("subject")); }
+            catch (IllegalArgumentException invalidMetadata) {
+                synchronized (lock) { check(expected); catalogFormatJson = catalogFormat(response).toString(); }
+                throw new CatalogFormatFailure(catalogFailureCode(invalidMetadata));
+            }
             synchronized (lock) {
                 check(expected);
                 session = current; catalog = result;
@@ -269,7 +277,7 @@ public final class SiwcClient {
         final long expected;
         synchronized (lock) {
             if (busy) return; busy = true; expected = ++generation; message = status; operationStage = status; lastFailure = null;
-            failureCode = null;
+            failureCode = null; catalogFormatJson = null;
         }
         notifyChanged();
         worker.execute(() -> {
@@ -431,6 +439,67 @@ public final class SiwcClient {
         }
         return ModelCatalog.fromMetadata(ModelCatalog.Source.ACCOUNT_MODELS, SiwcHttp.RESOURCE + "/models", fetched, subject, rows);
     }
+    /** Fixed keys and structural types only; values, descriptions and account data stay in memory. */
+    private static JSONObject catalogFormat(JSONObject value) throws Exception {
+        JSONArray models = value.getJSONArray("models");
+        JSONArray shapes = new JSONArray();
+        String[] fields = {"slug", "display_name", "available", "visibility", "supportedReasoningEfforts",
+                "supported_reasoning_efforts", "supportedReasoningLevels", "supported_reasoning_levels",
+                "defaultReasoningEffort", "default_reasoning_effort", "defaultReasoningLevel", "default_reasoning_level",
+                "supportedServiceTiers", "supported_service_tiers", "serviceTiers", "service_tiers"};
+        String[] optionKeys = {"reasoningEffort", "reasoning_effort", "effort", "value", "serviceTier", "service_tier"};
+        int listed = 0;
+        for (int i = 0; i < models.length(); i++) {
+            JSONObject model = models.getJSONObject(i);
+            if (!"list".equals(model.optString("visibility"))) continue;
+            listed++;
+            if (shapes.length() >= 32) continue;
+            JSONObject shape = new JSONObject().put("rowIndex", i);
+            for (String field : fields) {
+                Object item = model.opt(field);
+                JSONObject kind = new JSONObject().put("type", model.has(field) ? jsonType(item) : "absent");
+                if (item instanceof JSONArray) {
+                    JSONArray array = (JSONArray) item;
+                    JSONArray members = new JSONArray();
+                    for (int j = 0; j < Math.min(array.length(), 8); j++) {
+                        Object member = array.get(j);
+                        JSONObject memberShape = new JSONObject().put("type", jsonType(member));
+                        if (member instanceof JSONObject) {
+                            JSONObject object = (JSONObject) member;
+                            for (String key : optionKeys) if (object.has(key)) memberShape.put(key, jsonType(object.opt(key)));
+                        }
+                        members.put(memberShape);
+                    }
+                    kind.put("length", array.length()).put("memberTypes", members);
+                }
+                shape.put(field, kind);
+            }
+            shapes.put(shape);
+        }
+        return new JSONObject().put("totalModels", models.length()).put("listedModels", listed)
+                .put("truncated", listed > shapes.length()).put("shapes", shapes);
+    }
+    private static String jsonType(Object value) {
+        if (value == null || value == JSONObject.NULL) return "null";
+        if (value instanceof JSONObject) return "object";
+        if (value instanceof JSONArray) return "array";
+        if (value instanceof String) return "string";
+        if (value instanceof Boolean) return "boolean";
+        if (value instanceof Number) return "number";
+        return "other";
+    }
+    private static String catalogFailureCode(IllegalArgumentException error) {
+        String message = error.getMessage();
+        if (message == null) return "model_catalog_invalid";
+        if (message.startsWith("默认推理程度不在")) return "model_catalog_default_not_declared";
+        if (message.startsWith("模型元数据缺少字段")) return "model_catalog_field_missing";
+        if (message.startsWith("模型元数据字段必须是字符串")) return "model_catalog_field_type";
+        if (message.startsWith("支持参数必须是数组")) return "model_catalog_options_type";
+        if (message.startsWith("支持参数成员必须")) return "model_catalog_option_type";
+        if (message.startsWith("available 必须")) return "model_catalog_availability_type";
+        if (message.startsWith("模型 ID 重复")) return "model_catalog_duplicate_id";
+        return "model_catalog_invalid";
+    }
     private static Map<String, Object> jsonObject(JSONObject value) throws Exception {
         Map<String, Object> result = new LinkedHashMap<>();
         for (Iterator<String> keys = value.keys(); keys.hasNext();) { String key = keys.next(); result.put(key, jsonValue(value.get(key))); }
@@ -457,7 +526,12 @@ public final class SiwcClient {
         final String code;
         SessionValidationException(String code) { super("OAuth response validation failed"); this.code = code; }
     }
+    private static final class CatalogFormatFailure extends IOException {
+        final String code;
+        CatalogFormatFailure(String code) { super("Account model metadata validation failed"); this.code = code; }
+    }
     private static String safeFailureCode(Exception error) {
+        if (error instanceof CatalogFormatFailure) return ((CatalogFormatFailure) error).code;
         if (error instanceof SessionValidationException) return ((SessionValidationException) error).code;
         if (error instanceof TokenClaimsPolicy.InvalidClaimsException) {
             return "id_claim_" + ((TokenClaimsPolicy.InvalidClaimsException) error).getReason().name();
@@ -471,6 +545,7 @@ public final class SiwcClient {
         return type.matches("[A-Za-z0-9_]{1,80}") ? type : "operation_failed";
     }
     private static String safeFailure(Exception error) {
+        if (error instanceof CatalogFormatFailure) return "模型目录格式尚未兼容（" + ((CatalogFormatFailure) error).code + "），会话已保留。";
         if (error instanceof SessionValidationException) {
             String code = ((SessionValidationException) error).code;
             return "subscription_scope_missing".equals(code)

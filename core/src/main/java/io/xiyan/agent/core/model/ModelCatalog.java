@@ -179,13 +179,13 @@ public final class ModelCatalog {
                     ? Availability.UNAVAILABLE : Availability.UNKNOWN;
             this.visibility = optionalMetadataText(metadata, "visibility");
             this.reasoningEfforts = options(metadata,
-                    new String[]{"supportedReasoningEfforts", "supported_reasoning_efforts"},
-                    new String[]{"reasoningEffort", "reasoning_effort", "value"});
+                    new String[]{"supportedReasoningEfforts", "supported_reasoning_efforts", "supportedReasoningLevels", "supported_reasoning_levels"},
+                    new String[]{"reasoningEffort", "reasoning_effort", "value", "effort"});
             this.serviceTiers = options(metadata,
                     new String[]{"supportedServiceTiers", "supported_service_tiers", "serviceTiers", "service_tiers"},
                     new String[]{"serviceTier", "service_tier", "value"});
             this.defaultReasoningEffort = optionalMetadataText(metadata,
-                    "defaultReasoningEffort", "default_reasoning_effort");
+                    "defaultReasoningEffort", "default_reasoning_effort", "defaultReasoningLevel", "default_reasoning_level");
             if (defaultReasoningEffort != null && !reasoningEfforts.contains(defaultReasoningEffort)) {
                 throw new IllegalArgumentException("默认推理程度不在服务端支持列表内: " + id);
             }
