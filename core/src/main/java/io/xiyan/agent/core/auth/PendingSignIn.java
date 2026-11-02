@@ -12,12 +12,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * One short-lived, in-memory authorization-code transaction. Bind the loopback listener before
+ * One short-lived authorization-code transaction. Bind the loopback listener before
  * creating this object, and keep it private until token exchange finishes. This class performs
  * no networking, token exchange, persistence, or JWT verification.
  */
@@ -85,7 +88,9 @@ public final class PendingSignIn {
     }
 
     private final URI authorizationUri;
+    private final URI authorizationEndpoint;
     private final URI redirectUri;
+    private final String externalAgentHostId;
     private final String issuedClientId;
     private final String state;
     private final String nonce;
@@ -96,6 +101,13 @@ public final class PendingSignIn {
 
     private PendingSignIn(URI authorizationEndpoint, int boundRedirectPort,
             String issuedClientId, String externalAgentHostId, long nowEpochSeconds) {
+        this(authorizationEndpoint, boundRedirectPort, issuedClientId, externalAgentHostId,
+                nowEpochSeconds, randomValue(), randomValue(), randomValue());
+    }
+
+    private PendingSignIn(URI authorizationEndpoint, int boundRedirectPort,
+            String issuedClientId, String externalAgentHostId, long nowEpochSeconds,
+            String state, String nonce, String codeVerifier) {
         requireTrustedEndpoint(authorizationEndpoint);
         if (authorizationEndpoint.getRawQuery() != null) {
             throw new IllegalArgumentException("Authorization endpoint must not contain a query");
@@ -111,12 +123,14 @@ public final class PendingSignIn {
             throw new IllegalArgumentException("Invalid authorization creation time");
         }
         this.redirectUri = URI.create("http://127.0.0.1:" + boundRedirectPort + "/auth/callback");
+        this.authorizationEndpoint = authorizationEndpoint;
+        this.externalAgentHostId = externalAgentHostId;
         this.issuedClientId = issuedClientId;
         this.createdAtEpochSeconds = nowEpochSeconds;
         this.expiresAtEpochSeconds = nowEpochSeconds + LIFETIME_SECONDS;
-        this.state = randomValue();
-        this.nonce = randomValue();
-        this.codeVerifier = randomValue();
+        this.state = requireSavedSecret(state);
+        this.nonce = requireSavedSecret(nonce);
+        this.codeVerifier = requireSavedSecret(codeVerifier);
 
         Map<String, String> query = new LinkedHashMap<>();
         query.put("response_type", "code");
@@ -148,6 +162,66 @@ public final class PendingSignIn {
             String issuedClientId, String externalAgentHostId, long nowEpochSeconds) {
         return new PendingSignIn(authorizationEndpoint, boundRedirectPort, issuedClientId,
                 externalAgentHostId, nowEpochSeconds);
+    }
+
+    /** Sensitive values: pass directly to this app's encrypted, non-backup pending store only. */
+    public synchronized Map<String, Object> exportForEncryptedStorage() {
+        if (consumed) throw failure(Reason.ALREADY_CONSUMED);
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("authorizationEndpoint", authorizationEndpoint.toASCIIString());
+        value.put("redirectUri", redirectUri.toASCIIString());
+        value.put("issuedClientId", issuedClientId);
+        value.put("externalAgentHostId", externalAgentHostId);
+        value.put("state", state); value.put("nonce", nonce); value.put("codeVerifier", codeVerifier);
+        value.put("createdAtEpochSeconds", createdAtEpochSeconds);
+        value.put("expiresAtEpochSeconds", expiresAtEpochSeconds);
+        return Collections.unmodifiableMap(value);
+    }
+
+    /** Restore the original transaction without generating a new state, verifier, URI or expiry. */
+    public static PendingSignIn restoreFromEncryptedStorage(Map<String, ?> value, long nowEpochSeconds) {
+        if (value == null || !value.keySet().equals(new HashSet<>(Arrays.asList("authorizationEndpoint", "redirectUri", "issuedClientId",
+                "externalAgentHostId", "state", "nonce", "codeVerifier", "createdAtEpochSeconds", "expiresAtEpochSeconds")))) {
+            throw new IllegalArgumentException("Invalid saved authorization fields");
+        }
+        Object createdValue = value.get("createdAtEpochSeconds"), expiresValue = value.get("expiresAtEpochSeconds");
+        if (!(createdValue instanceof Long) || !(expiresValue instanceof Long)) {
+            throw new IllegalArgumentException("Invalid saved authorization time");
+        }
+        long created = (Long) createdValue, expires = (Long) expiresValue;
+        if (created < 0 || created > Long.MAX_VALUE - LIFETIME_SECONDS || expires != created + LIFETIME_SECONDS
+                || nowEpochSeconds < created || nowEpochSeconds >= expires) throw failure(Reason.EXPIRED);
+        try {
+            URI redirect = new URI(savedString(value, "redirectUri", false));
+            PendingSignIn pending = new PendingSignIn(new URI(savedString(value, "authorizationEndpoint", false)),
+                    redirect.getPort(), savedString(value, "issuedClientId", true),
+                    savedString(value, "externalAgentHostId", false), created,
+                    savedString(value, "state", false), savedString(value, "nonce", false), savedString(value, "codeVerifier", false));
+            if (!pending.redirectUri.toASCIIString().equals(redirect.toASCIIString())) throw failure(Reason.REDIRECT_MISMATCH);
+            return pending;
+        } catch (URISyntaxException invalid) {
+            throw new IllegalArgumentException("Invalid saved authorization URI");
+        }
+    }
+
+    private static String savedString(Map<String, ?> value, String key, boolean nullable) {
+        Object item = value.get(key);
+        if (nullable && item == null) return null;
+        if (!(item instanceof String)) throw new IllegalArgumentException("Invalid saved authorization value");
+        return (String) item;
+    }
+
+    private static String requireSavedSecret(String value) {
+        if (value == null || !value.matches("[A-Za-z0-9_-]{43}")) {
+            throw new IllegalArgumentException("Invalid saved authorization secret");
+        }
+        byte[] bytes;
+        try { bytes = Base64.getUrlDecoder().decode(value); }
+        catch (IllegalArgumentException invalid) { throw new IllegalArgumentException("Invalid saved authorization secret"); }
+        if (bytes.length != 32 || !Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).equals(value)) {
+            throw new IllegalArgumentException("Invalid saved authorization secret");
+        }
+        return value;
     }
 
     /** Generate once per installation, then persist and reuse this non-account host identifier. */

@@ -5,13 +5,17 @@ import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.RippleDrawable;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
@@ -32,6 +36,7 @@ final class ChatScreen implements ScreenContent {
     private final EditText editor;
     private final TextView welcomeEyebrow,welcomeTitle,welcomeSubtitle,prompt,reply,status,connection;
     private final Button mode,model,edit,copy,retry,changeEffort;
+    private final int pageEdge;
     private String lastReply="",lastPrompt="";
     private String displayedModelName,displayedEffort,displayedMode,contextMode,contextModel;
     private boolean compactInput,selectionReady,draftHasContent;
@@ -41,26 +46,25 @@ final class ChatScreen implements ScreenContent {
 
     ChatScreen(MainActivity host) {
         this.host=host;Ui.Colors c=Ui.colors(host);root=Ui.column(host);
-        int edge=host.getResources().getConfiguration().screenWidthDp<360?16:20;
-        flow=Ui.page(host);flow.setPadding(Ui.dp(host,edge),Ui.dp(host,8),Ui.dp(host,edge),Ui.dp(host,24));
-        welcome=Ui.column(host);welcomeEyebrow=Ui.text(host,"想法 · 目标 · 下一步",12,Ui.MUTED);welcome.addView(welcomeEyebrow);
-        welcomeTitle=Ui.heading(host,"从一句话开始",28);LinearLayout.LayoutParams titleSpace=new LinearLayout.LayoutParams(-1,-2);titleSpace.topMargin=Ui.dp(host,8);welcome.addView(welcomeTitle,titleSpace);
-        welcomeSubtitle=Ui.text(host,"聊一件事，或准备下一项任务。",15,Ui.MUTED);LinearLayout.LayoutParams subtitleSpace=new LinearLayout.LayoutParams(-1,-2);subtitleSpace.topMargin=Ui.dp(host,8);welcome.addView(welcomeSubtitle,subtitleSpace);
-        suggestions=Ui.row(host);
-        Button daily=Ui.chip(host,"日常任务",false,()->host.fillTaskDraft("通用操作","我想在手机上完成：\n使用的应用：\n完成条件："));
-        Button game=Ui.chip(host,"游戏任务",false,()->host.fillTaskDraft("游戏操作","游戏：Galaxy 联合防御\n本次目标：\n停止条件："));
-        game.setContentDescription("准备 Galaxy 联合防御任务草稿");
-        suggestions.addView(daily,new LinearLayout.LayoutParams(-2,-2));LinearLayout.LayoutParams gp=new LinearLayout.LayoutParams(-2,-2);gp.setMargins(Ui.dp(host,8),0,0,0);suggestions.addView(game,gp);
-        LinearLayout.LayoutParams suggestionSpace=new LinearLayout.LayoutParams(-1,-2);suggestionSpace.topMargin=Ui.dp(host,16);welcome.addView(suggestions,suggestionSpace);flow.addView(welcome,new LinearLayout.LayoutParams(-1,-2));
+        pageEdge=host.getResources().getConfiguration().screenWidthDp<360?16:20;
+        flow=Ui.page(host);flow.setPadding(Ui.dp(host,pageEdge),Ui.dp(host,8),Ui.dp(host,pageEdge),Ui.dp(host,24));
+        welcome=Ui.column(host);welcomeEyebrow=Ui.text(host,"01 / 现场笔记",12,c.accent);welcomeEyebrow.setTypeface(Typeface.MONOSPACE);welcome.addView(welcomeEyebrow);
+        welcomeTitle=Ui.heading(host,"XIYAN.",52);welcomeTitle.setLetterSpacing(-.04f);LinearLayout.LayoutParams titleSpace=new LinearLayout.LayoutParams(-1,-2);titleSpace.topMargin=Ui.dp(host,8);welcome.addView(welcomeTitle,titleSpace);
+        welcomeSubtitle=Ui.heading(host,"你的下一步。",28);LinearLayout.LayoutParams subtitleSpace=new LinearLayout.LayoutParams(-1,-2);subtitleSpace.topMargin=Ui.dp(host,4);welcome.addView(welcomeSubtitle,subtitleSpace);
+        suggestions=Ui.column(host);
+        suggestions.addView(editorialLink("01","日常手机任务",()->host.fillTaskDraft("通用操作","我想在手机上完成：\n使用的应用：\n完成条件：")),new LinearLayout.LayoutParams(-1,-2));
+        View rule=new View(host);rule.setBackgroundColor(c.border);suggestions.addView(rule,new LinearLayout.LayoutParams(-1,Ui.dp(host,1)));
+        suggestions.addView(editorialLink("02","Galaxy 联合防御",()->host.fillTaskDraft("游戏操作","游戏：Galaxy 联合防御\n本次目标：\n停止条件：")),new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout.LayoutParams suggestionSpace=new LinearLayout.LayoutParams(-1,-2);suggestionSpace.topMargin=Ui.dp(host,24);welcome.addView(suggestions,suggestionSpace);flow.addView(welcome,new LinearLayout.LayoutParams(-1,-2));
 
         userMessage=new FrameLayout(host);prompt=Ui.text(host,"",16,Ui.TEXT);
-        prompt.setMaxWidth(Ui.dp(host,Math.min(640,Math.round(host.getResources().getConfiguration().screenWidthDp*.86f))));
-        prompt.setPadding(Ui.dp(host,16),Ui.dp(host,12),Ui.dp(host,16),Ui.dp(host,12));prompt.setBackground(Ui.shape(host,c.accentSurface,20,Color.TRANSPARENT));
-        userMessage.addView(prompt,new FrameLayout.LayoutParams(-2,-2,Gravity.END));flow.addView(userMessage,new LinearLayout.LayoutParams(-1,-2));
+        prompt.setPadding(0,Ui.dp(host,8),0,Ui.dp(host,8));
+        LinearLayout question=Ui.row(host);View quoteRule=new View(host);quoteRule.setBackgroundColor(c.accent);question.addView(quoteRule,new LinearLayout.LayoutParams(Ui.dp(host,2),-1));
+        LinearLayout questionText=Ui.column(host);questionText.addView(Ui.text(host,"你 / 提问",12,Ui.MUTED));questionText.addView(prompt,new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout.LayoutParams qp=new LinearLayout.LayoutParams(0,-2,1);qp.setMargins(Ui.dp(host,12),0,0,0);question.addView(questionText,qp);
+        userMessage.addView(question,new FrameLayout.LayoutParams(-1,-2));flow.addView(userMessage,new LinearLayout.LayoutParams(-1,-2));
         answer=Ui.column(host);Ui.gap(host,answer,24);LinearLayout author=Ui.row(host);
-        AgentIconView brand=new AgentIconView(host,AgentIconView.Icon.ORBIT,c.accent);brand.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        author.addView(brand,new LinearLayout.LayoutParams(Ui.dp(host,24),Ui.dp(host,24)));
-        TextView name=Ui.heading(host,"Xiyan",14);LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-2,-2);np.setMargins(Ui.dp(host,8),0,0,0);author.addView(name,np);answer.addView(author);
+        TextView name=Ui.heading(host,"XIYAN / 回复",12);name.setLetterSpacing(.08f);author.addView(name);answer.addView(author);
         Ui.gap(host,answer,12);reply=Ui.text(host,"",16,Ui.TEXT);reply.setTextIsSelectable(true);answer.addView(reply);
         Ui.gap(host,answer,8);status=Ui.text(host,"",12,Ui.MUTED);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);answer.addView(status);
         changeEffort=Ui.textAction(host,"更改思考程度",host::openModelPicker);answer.addView(changeEffort,new LinearLayout.LayoutParams(-2,-2));
@@ -73,9 +77,9 @@ final class ChatScreen implements ScreenContent {
         retry=Ui.outlineAction(host,"重试原提问",this::retryOriginal);LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-2,-2);rp.setMargins(0,Ui.dp(host,8),0,0);answer.addView(retry,rp);
         flow.addView(answer,new LinearLayout.LayoutParams(-1,-2));messages=Ui.scroll(host,flow);root.addView(messages,new LinearLayout.LayoutParams(-1,0,1));
 
-        bottom=Ui.column(host);bottom.setPadding(Ui.dp(host,12),Ui.dp(host,8),Ui.dp(host,12),Ui.dp(host,8));
+        bottom=Ui.column(host);bottom.setPadding(Ui.dp(host,pageEdge),Ui.dp(host,8),Ui.dp(host,pageEdge),Ui.dp(host,8));
         composer=Ui.column(host);composer.setPadding(Ui.dp(host,8),Ui.dp(host,6),Ui.dp(host,8),Ui.dp(host,6));
-        composer.setBackground(Ui.shape(host,c.surface,24,c.border));composer.setElevation(Ui.dp(host,1));
+        composer.setBackground(Ui.shape(host,c.surface,10,c.text));composer.setElevation(0);
         compactMenu=Ui.iconButton(host,AgentIconView.Icon.MENU,"打开导航",c.muted,host::openNavigation);compactMenu.setVisibility(View.GONE);
         composer.addView(compactMenu,new LinearLayout.LayoutParams(Ui.dp(host,48),Ui.dp(host,48)));
         editor=new EditText(host);editor.setTextSize(16);editor.setTextColor(c.text);editor.setHintTextColor(c.muted);editor.setBackgroundColor(Color.TRANSPARENT);
@@ -93,7 +97,7 @@ final class ChatScreen implements ScreenContent {
             }
             @Override public void afterTextChanged(Editable value){ }
         });composer.addView(editor,new LinearLayout.LayoutParams(-1,-2));
-        tools=Ui.row(host);mode=Ui.chip(host,"手机",false,this::showInputTools);mode.setTextSize(12);mode.setMinWidth(0);Ui.downIndicator(host,mode,c.muted);
+        tools=Ui.row(host);mode=Ui.textAction(host,"手机",this::showInputTools);mode.setTextSize(12);mode.setMinWidth(0);mode.setPadding(Ui.dp(host,8),0,Ui.dp(host,8),0);Ui.downIndicator(host,mode,c.muted);
         tools.addView(mode,new LinearLayout.LayoutParams(-2,Ui.dp(host,48)));
         model=Ui.textAction(host,"选择模型",host::openModelPicker);model.setTextSize(12);model.setMinWidth(0);model.setSingleLine(true);model.setEllipsize(TextUtils.TruncateAt.END);
         model.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);model.setPadding(Ui.dp(host,10),0,Ui.dp(host,4),0);
@@ -113,6 +117,13 @@ final class ChatScreen implements ScreenContent {
         messages.addOnLayoutChangeListener((v,left,top,right,bottomEdge,oldLeft,oldTop,oldRight,oldBottom)->layoutWelcome());
     }
     @Override public View view(){return root;}
+    private LinearLayout editorialLink(String number,String label,Runnable action){
+        LinearLayout row=new LinearLayout(host){@Override public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(info);info.setClassName(Button.class.getName());}};
+        row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setMinimumHeight(Ui.dp(host,48));row.setPadding(0,Ui.dp(host,8),0,Ui.dp(host,8));
+        TextView index=Ui.text(host,number,12,Ui.colors(host).accent);index.setTypeface(Typeface.MONOSPACE);row.addView(index,new LinearLayout.LayoutParams(Ui.dp(host,36),-2));
+        row.addView(Ui.text(host,label,14,Ui.TEXT),new LinearLayout.LayoutParams(0,-2,1));row.addView(new AgentIconView(host,AgentIconView.Icon.CHEVRON,Ui.colors(host).text),new LinearLayout.LayoutParams(Ui.dp(host,20),Ui.dp(host,20)));
+        row.setFocusable(true);row.setClickable(true);row.setContentDescription(label+"，准备任务草稿");row.setBackground(new RippleDrawable(ColorStateList.valueOf(Ui.colors(host).accentSurface),Ui.shape(host,Color.TRANSPARENT,0,Color.TRANSPARENT),null));row.setOnClickListener(v->action.run());return row;
+    }
     @Override public void leave(){host.draftSelection(editor.getSelectionStart(),editor.getSelectionEnd());messages.removeCallbacks(scrollToLatest);messages.removeCallbacks(welcomeLayout);}
     private void layoutWelcome(){
         if(compactInput||host.showingReply()){welcome.setVisibility(View.GONE);return;}
@@ -120,8 +131,8 @@ final class ChatScreen implements ScreenContent {
         if(welcomeMode!=nextMode){
             welcomeMode=nextMode;welcomeEyebrow.setVisibility(draftHasContent?View.GONE:View.VISIBLE);
             welcomeSubtitle.setVisibility(draftHasContent?View.GONE:View.VISIBLE);suggestions.setVisibility(draftHasContent?View.GONE:View.VISIBLE);
-            textIfChanged(welcomeTitle,draftHasContent?"继续写下你的想法":"从一句话开始");welcomeTitle.setTextSize(draftHasContent?20:28);
-            float line=(draftHasContent?20:28)*1.3f;welcomeTitle.setLineHeight(Math.round(android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,line,host.getResources().getDisplayMetrics())));
+            textIfChanged(welcomeTitle,draftHasContent?"当前输入":"XIYAN.");welcomeTitle.setTextSize(draftHasContent?20:52);welcomeTitle.setLetterSpacing(draftHasContent?0:-.04f);
+            float line=draftHasContent?28:56;welcomeTitle.setLineHeight(Math.round(android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,line,host.getResources().getDisplayMetrics())));
             LinearLayout.LayoutParams titleSpace=(LinearLayout.LayoutParams)welcomeTitle.getLayoutParams();titleSpace.topMargin=draftHasContent?0:Ui.dp(host,8);welcomeTitle.setLayoutParams(titleSpace);
         }
         int width=flow.getWidth()-flow.getPaddingLeft()-flow.getPaddingRight(),viewport=messages.getHeight();
@@ -167,7 +178,7 @@ final class ChatScreen implements ScreenContent {
         editor.setMaxLines(compact?1:5);editor.setHorizontallyScrolling(compact);
         editor.setPadding(Ui.dp(host,compact?8:10),Ui.dp(host,compact?4:10),Ui.dp(host,compact?8:10),Ui.dp(host,compact?4:8));
         composer.setPadding(Ui.dp(host,compact?4:8),Ui.dp(host,compact?2:6),Ui.dp(host,compact?4:8),Ui.dp(host,compact?2:6));
-        bottom.setPadding(Ui.dp(host,compact?8:12),Ui.dp(host,compact?2:8),Ui.dp(host,compact?8:12),Ui.dp(host,compact?2:8));
+        bottom.setPadding(Ui.dp(host,compact?8:pageEdge),Ui.dp(host,compact?2:8),Ui.dp(host,compact?8:pageEdge),Ui.dp(host,compact?2:8));
     }
     void replaceDraft(String value){editor.setText(value);editor.setSelection(editor.length());host.draftSelection(editor.length(),editor.length());}
     @Override public void update(SiwcClient.Snapshot s) {
@@ -200,7 +211,7 @@ final class ChatScreen implements ScreenContent {
         enabledIfChanged(model,!s.busy);String nextMode=host.selectedMode();
         if(!TextUtils.equals(displayedMode,nextMode)){
             displayedMode=nextMode;boolean gameMode="游戏操作".equals(nextMode);textIfChanged(mode,gameMode?"游戏":"手机");
-            int tint=gameMode?Ui.colors(host).secondary:Ui.colors(host).muted;mode.setTextColor(tint);Ui.downIndicator(host,mode,tint);mode.setContentDescription("任务模式："+nextMode+"，打开模式与草稿操作");
+            int tint=Ui.colors(host).muted;mode.setTextColor(tint);Ui.downIndicator(host,mode,tint);mode.setContentDescription("任务模式："+nextMode+"，打开模式与草稿操作");
         }
         layoutWelcome();updateContext(s);updateSend(s,selectionReady);
     }
@@ -223,11 +234,11 @@ final class ChatScreen implements ScreenContent {
         updateSend(s,host.configuredSelection(s)!=null);
     }
     private void updateSend(SiwcClient.Snapshot s,boolean configured) {
-        boolean running=s.busy||"running".equals(s.inferenceStatus);Ui.Colors c=Ui.colors(host);
+        boolean running=host.anyOperationBusy(s);Ui.Colors c=Ui.colors(host);
         int appearance=running?1:0;
         if(sendAppearance!=appearance){
             sendAppearance=appearance;((AgentIconView)send.getChildAt(0)).appearance(running?AgentIconView.Icon.STOP:AgentIconView.Icon.SEND,running?c.alert:c.onAccent);
-            Ui.iconSurface(host,send,running?c.alertSurface:c.accent,running?c.alert:c.onAccent,24);send.setContentDescription(running?"停止回复和后续手机动作":"发送消息");
+            Ui.iconSurface(host,send,running?c.alertSurface:c.accent,running?c.alert:c.onAccent,8);send.setContentDescription(running?"停止回复和后续手机动作":"发送消息");
         }
         enabledIfChanged(send,running||(!s.busy&&configured&&draftHasContent));
     }

@@ -308,6 +308,73 @@ public class PendingSignInTest {
         assertFalse(callback.toString().contains(callback.getCode()));
     }
 
+    @Test
+    public void encryptedStateRestorationPreservesTheOriginalAuthorizationExactly() {
+        PendingSignIn original = pending(ISSUED_ID);
+        PendingSignIn restored = PendingSignIn.restoreFromEncryptedStorage(original.exportForEncryptedStorage(), NOW + 120);
+        assertEquals(original.authorizationUri(), restored.authorizationUri());
+        assertEquals(original.getRedirectUri(), restored.getRedirectUri());
+        assertEquals(original.getNonce(), restored.getNonce());
+        assertEquals(original.getCodeVerifier(), restored.getCodeVerifier());
+        assertEquals(original.getExpiresAtEpochSeconds(), restored.getExpiresAtEpochSeconds());
+        assertEquals("test+code", restored.consumeCallback(success(original, ""), NOW + 120).getCode());
+    }
+
+    @Test
+    public void restoringDoesNotExtendTheOriginalFiveMinuteDeadline() {
+        PendingSignIn original = pending(null);
+        Map<String, Object> saved = original.exportForEncryptedStorage();
+        PendingSignIn restored = PendingSignIn.restoreFromEncryptedStorage(saved, NOW + 299);
+        assertEquals(NOW + 300, restored.getExpiresAtEpochSeconds());
+        assertReason(PendingSignIn.Reason.EXPIRED, () -> PendingSignIn.restoreFromEncryptedStorage(saved, NOW + 300));
+        assertReason(PendingSignIn.Reason.EXPIRED, () -> PendingSignIn.restoreFromEncryptedStorage(saved, NOW - 1));
+    }
+
+    @Test
+    public void restoredRedirectRejectsAlternateSchemesHostsPathsAndNoncanonicalAuthority() {
+        for (String uri : new String[]{"https://127.0.0.1:43917/auth/callback", "http://localhost:43917/auth/callback",
+                "http://127.0.0.1:43917/callback", "http://127.0.0.1:043917/auth/callback",
+                "http://user@127.0.0.1:43917/auth/callback", "http://127.0.0.1:43917/auth/callback#fragment"}) {
+            Map<String, Object> saved = new LinkedHashMap<>(pending(null).exportForEncryptedStorage());
+            saved.put("redirectUri", uri);
+            assertThrows(IllegalArgumentException.class, () -> PendingSignIn.restoreFromEncryptedStorage(saved, NOW + 1));
+        }
+    }
+
+    @Test
+    public void corruptedSavedSecretsAndUnexpectedFieldsAreRejectedWithoutEchoingValues() {
+        for (String key : new String[]{"state", "nonce", "codeVerifier"}) {
+            Map<String, Object> saved = new LinkedHashMap<>(pending(null).exportForEncryptedStorage());
+            saved.put(key, "private-corrupted-value");
+            IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                    () -> PendingSignIn.restoreFromEncryptedStorage(saved, NOW + 1));
+            assertFalse(failure.toString().contains("private-corrupted-value"));
+            assertNull(failure.getCause());
+        }
+        Map<String, Object> saved = new LinkedHashMap<>(pending(null).exportForEncryptedStorage());
+        saved.put("unrecognised", "private-extra");
+        assertThrows(IllegalArgumentException.class, () -> PendingSignIn.restoreFromEncryptedStorage(saved, NOW + 1));
+    }
+
+    @Test
+    public void changedExpiryAndNonnumericSavedTimesAreRejected() {
+        for (Object bad : new Object[]{"1700000300", 1700000300.0, NOW + 301}) {
+            Map<String, Object> saved = new LinkedHashMap<>(pending(null).exportForEncryptedStorage());
+            saved.put("expiresAtEpochSeconds", bad);
+            assertThrows(IllegalArgumentException.class, () -> PendingSignIn.restoreFromEncryptedStorage(saved, NOW + 1));
+        }
+    }
+
+    @Test
+    public void aConsumedRestoredAttemptCannotBeReplayedOrExportedAgain() {
+        PendingSignIn original = pending(null);
+        PendingSignIn restored = PendingSignIn.restoreFromEncryptedStorage(original.exportForEncryptedStorage(), NOW + 1);
+        restored.consumeCallback(success(original, "&client_id=" + ISSUED_ID), NOW + 1);
+        assertReason(PendingSignIn.Reason.ALREADY_CONSUMED,
+                () -> restored.consumeCallback(success(original, "&client_id=" + ISSUED_ID), NOW + 1));
+        assertReason(PendingSignIn.Reason.ALREADY_CONSUMED, restored::exportForEncryptedStorage);
+    }
+
     private static PendingSignIn pending(String issuedClientId) {
         return PendingSignIn.create(AUTHORIZATION_ENDPOINT, PORT, issuedClientId, HOST_ID, NOW);
     }

@@ -18,12 +18,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import io.xiyan.agent.account.SiwcClient;
 import io.xiyan.agent.control.XiyanAccessibilityService;
+import io.xiyan.agent.shizuku.ShizukuController;
 
 /** Compact settings destinations using the shared palette and existing host actions. */
 final class SettingsScreen implements ScreenContent {
     private final MainActivity host;
     private final View root;
     private TextView controlStatus,controlDetail;
+    private TextView shizukuStatus;
     private Row accountRow,controlRow;
 
     SettingsScreen(MainActivity host,MainActivity.Screen screen) {
@@ -36,6 +38,7 @@ final class SettingsScreen implements ScreenContent {
     }
 
     private void overview(LinearLayout page) {
+        Ui.editorial(host,page,"06 / PREFERENCES","按你的习惯。");
         Ui.section(host,page,"偏好");
         new Row(page,AgentIconView.Icon.SUN,"外观与显示","",themeLabel(Ui.themeChoice(host)),()->host.navigate(MainActivity.Screen.APPEARANCE));
         controlRow=new Row(page,AgentIconView.Icon.PHONE,"手机控制","","",()->host.navigate(MainActivity.Screen.CONTROLS));
@@ -62,7 +65,7 @@ final class SettingsScreen implements ScreenContent {
     private void preview(LinearLayout parent,String label,String value,boolean light,String current,boolean stacked) {
         Ui.Colors c=Ui.colors(host);boolean selected=value.equals(current);
         LinearLayout card=Ui.column(host);int pad=Ui.dp(host,8);card.setPadding(pad,pad,pad,pad);
-        card.setBackground(Ui.shape(host,c.surface,20,selected?c.accent:c.border));
+        card.setBackground(Ui.shape(host,c.surface,4,selected?c.accent:c.border));
         ThemePreview image=new ThemePreview(new Ui.Colors(light));image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         card.addView(image,new LinearLayout.LayoutParams(-1,Ui.dp(host,120)));
         Button choice=Ui.chip(host,label,selected,()->host.changeTheme(value));
@@ -72,6 +75,12 @@ final class SettingsScreen implements ScreenContent {
     }
 
     private void controls(LinearLayout page) {
+        Ui.editorial(host,page,"05 / CONTROL","连接手机能力。");
+        Ui.section(host,page,"Shizuku");
+        shizukuStatus=Ui.text(host,"",14,Ui.MUTED);page.addView(shizukuStatus);
+        Button shizuku=Ui.action(host,"设置 Shizuku 操控",true,false,host::openShizuku);page.addView(shizuku,new LinearLayout.LayoutParams(-1,-2));
+        Ui.gap(host,page,8);page.addView(Ui.text(host,"在 Shizuku 中授权后，可通过本机服务派发点击、滑动、返回和主页操作。",13,Ui.MUTED));
+        Ui.divider(host,page);
         Ui.Colors c=Ui.colors(host);LinearLayout summary=Ui.surface(host,page,c.surface);removeTopMargin(summary);
         LinearLayout row=Ui.row(host);FrameLayout tile=new FrameLayout(host);tile.setBackground(Ui.shape(host,c.accentSurface,16,Color.TRANSPARENT));
         tile.addView(new AgentIconView(host,AgentIconView.Icon.PHONE,c.accent),new FrameLayout.LayoutParams(Ui.dp(host,24),Ui.dp(host,24),Gravity.CENTER));
@@ -102,10 +111,12 @@ final class SettingsScreen implements ScreenContent {
 
     @Override public View view(){return root;}
     @Override public void update(SiwcClient.Snapshot snapshot) {
+        ShizukuController.Snapshot shizuku=ShizukuController.getInstance(host).snapshot();
+        if(shizukuStatus!=null)shizukuStatus.setText(ShizukuUi.status(shizuku));
         boolean connected=XiyanAccessibilityService.getConnectedService()!=null;
         if(controlStatus!=null){controlStatus.setText(connected?"服务已连接":"服务未连接");controlStatus.setTextColor(connected?Ui.colors(host).accent:Ui.colors(host).muted);}
         if(controlDetail!=null)controlDetail.setText(connected?"可以在开发者页面进行应用内单步验证。":"可前往系统检查权限，连接后进行应用内单步验证。");
-        if(controlRow!=null)controlRow.value(connected?"已连接":"未连接");
+        if(controlRow!=null)controlRow.value(shizuku.bound?"Shizuku 已连接":connected?"无障碍已连接":"待连接");
         if(accountRow!=null)accountRow.value(!snapshot.hasSession?"未连接":snapshot.reauthRequired?"需重新连接":snapshot.connected?"连接有效":"待续期");
     }
 

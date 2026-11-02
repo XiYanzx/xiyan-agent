@@ -2,7 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <queries>
+        <package android:name="moe.shizuku.privileged.api" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.BROWSABLE" />
@@ -28,6 +31,15 @@
         </activity>
         <activity android:name=".TestPadActivity" android:exported="false" />
         <activity android:name=".DeveloperActivity" android:exported="false" />
+        <activity android:name=".ShizukuControlActivity" android:exported="false" />
+        <service android:name=".account.AccountLoginService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User initiated sign in: keep a bounded private loopback callback alive while the user completes system browser authorization." />
+        </service>
+        <provider android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku" android:multiprocess="false"
+            android:enabled="true" android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
         <service
             android:name=".control.XiyanAccessibilityService"
             android:exported="true"

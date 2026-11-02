@@ -10,6 +10,10 @@ The Design System 1.0 refresh uses 33 Lucide functional icons at revision a529c2
 
 The P0 APK contains application Java code compiled with the Android SDK and uses Android platform APIs. It does not bundle Codex, V8, Rust runtime artifacts, Android NDK libraries, or an external AI SDK.
 
+P0.10 uses the official Shizuku API libraries at fixed Maven version 13.1.5: dev.rikka.shizuku:api, provider, aidl and shared (https://github.com/RikkaApps/Shizuku-API). They are MIT-licensed; the complete notice is bundled at assets/licenses/shizuku-api-LICENSE.txt and included in release attachments. The separate Shizuku manager is installed by the user and is not bundled in the Xiyan APK. Dependency hashes and the UserService integration are recorded in docs/runtime/SHIZUKU-INTEGRATION.zh-CN.md.
+
+Shizuku API transitively includes androidx.annotation:annotation:1.3.0, licensed under Apache-2.0 by the Android Open Source Project. The source artifact is published at https://dl.google.com/dl/android/maven2/androidx/annotation/annotation/1.3.0/annotation-1.3.0-sources.jar. Complete license text and source copyright notices are bundled at assets/licenses/androidx-annotation-LICENSE.txt and included in release attachments.
+
 Build and test tools, not bundled in the APK:
 
 | Component | Version | License/source |

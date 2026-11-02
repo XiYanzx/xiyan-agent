@@ -34,8 +34,8 @@ import java.util.Set;
 
 /** Original native components and shared semantic colors. */
 final class Ui {
-    static final int BACKGROUND=0xff101919, SURFACE=0xff172323, TEXT=0xffedf5f2;
-    static final int MUTED=0xffa1b6ae, ACCENT=0xff79d5bd, ALERT=0xfff39bab;
+    static final int BACKGROUND=0xff111111, SURFACE=0xff191919, TEXT=0xfff3f0e8;
+    static final int MUTED=0xffb2aea6, ACCENT=0xffff9778, ALERT=0xffffa0ad;
     static final class Colors extends DesignTokens.Palette {
         Colors(boolean light) { super(light); }
     }
@@ -122,7 +122,12 @@ final class Ui {
         float line=size*(size>=22?1.3f:1.5f);v.setLineHeight(Math.round(android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,line,a.getResources().getDisplayMetrics())));
         v.setFontFeatureSettings("tnum");v.setPadding(0,dp(a,2),0,dp(a,2));return v;
     }
-    static TextView heading(Activity a,String label,int size) { TextView v=text(a,label,size,TEXT);v.setTypeface(Typeface.create(Typeface.create("sans-serif",Typeface.NORMAL),600,false));v.setAccessibilityHeading(true);return v; }
+    static TextView heading(Activity a,String label,int size) { TextView v=text(a,label,size,TEXT);v.setTypeface(Typeface.create(Typeface.create("sans-serif",Typeface.NORMAL),700,false));v.setAccessibilityHeading(true);return v; }
+    static int ripple(Activity a){int color=colors(a).accent;return Color.argb(32,Color.red(color),Color.green(color),Color.blue(color));}
+    static void editorial(Activity a,LinearLayout parent,String index,String title){
+        TextView label=text(a,index,11,MUTED);label.setTypeface(Typeface.MONOSPACE);label.setLetterSpacing(.12f);parent.addView(label);
+        TextView heading=heading(a,title,28);LinearLayout.LayoutParams spacing=new LinearLayout.LayoutParams(-1,-2);spacing.setMargins(0,dp(a,6),0,dp(a,20));parent.addView(heading,spacing);
+    }
     static void section(Activity a,LinearLayout parent,String label) { TextView v=heading(a,label,16);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(a,24),0,dp(a,10));parent.addView(v,p); }
     static void gap(Activity a,LinearLayout parent,int height) { parent.addView(new View(a),new LinearLayout.LayoutParams(1,dp(a,height))); }
     static void divider(Activity a,LinearLayout parent) { View v=new View(a);v.setBackgroundColor(colors(a).border);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(a,1));p.setMargins(0,dp(a,10),0,dp(a,10));parent.addView(v,p); }
@@ -131,22 +136,22 @@ final class Ui {
         b.setStateListAnimator(null);b.setElevation(0);b.setTranslationZ(0);b.setIncludeFontPadding(false);
         int fg=danger?c.alert:primary?c.onAccent:c.text;
         b.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled},new int[]{}},new int[]{c.muted,fg}));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(isLight(a)?0x22087f72:0x3379d5bd),shape(a,danger?c.alertSurface:primary?c.accent:c.raised,DesignTokens.RADIUS_CONTROL,Color.TRANSPARENT),null));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(ripple(a)),shape(a,danger?c.alertSurface:primary?c.accent:c.raised,DesignTokens.RADIUS_CONTROL,Color.TRANSPARENT),null));
         b.setMinHeight(dp(a,48));b.setMinimumHeight(dp(a,48));b.setMinWidth(dp(a,48));b.setMinimumWidth(dp(a,48));b.setPadding(dp(a,14),dp(a,10),dp(a,14),dp(a,10));b.setOnClickListener(v->action.run());return b;
     }
     static Button outlineAction(Activity a,String label,Runnable action) {
         Button button=action(a,label,false,false,action);Colors c=colors(a);
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22087f72),shape(a,Color.TRANSPARENT,DesignTokens.RADIUS_CONTROL,c.border),null));return button;
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(ripple(a)),shape(a,Color.TRANSPARENT,DesignTokens.RADIUS_CONTROL,c.border),null));return button;
     }
     static Button textAction(Activity a,String label,Runnable action) {
         Button button=action(a,label,false,false,action);Colors c=colors(a);button.setTextColor(c.accent);
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22087f72),shape(a,Color.TRANSPARENT,12,Color.TRANSPARENT),null));return button;
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(ripple(a)),shape(a,Color.TRANSPARENT,8,Color.TRANSPARENT),null));return button;
     }
     static Button chip(Activity a,String label,boolean selected,Runnable action) {
         Button button=action(a,label,false,false,action);Colors c=colors(a);button.setTextSize(12);
         button.setTextColor(selected?c.accent:c.muted);button.setSelected(selected);
-        button.setBackground(new InsetDrawable(new RippleDrawable(ColorStateList.valueOf(0x22087f72),
-                shape(a,selected?c.accentSurface:c.raised,24,Color.TRANSPARENT),null),0,dp(a,6),0,dp(a,6)));
+        button.setBackground(new InsetDrawable(new RippleDrawable(ColorStateList.valueOf(ripple(a)),
+                shape(a,selected?c.accentSurface:Color.TRANSPARENT,4,selected?Color.TRANSPARENT:c.border),null),0,dp(a,6),0,dp(a,6)));
         button.setPadding(dp(a,12),dp(a,8),dp(a,12),dp(a,8));return button;
     }
     static FrameLayout iconButton(Activity a,AgentIconView.Icon icon,String description,int color,Runnable action) {
@@ -154,7 +159,7 @@ final class Ui {
             @Override public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) { super.onInitializeAccessibilityNodeInfo(info);info.setClassName(Button.class.getName()); }
         };
         hit.setMinimumWidth(dp(a,48));hit.setMinimumHeight(dp(a,48));hit.setFocusable(true);hit.setClickable(true);hit.setContentDescription(description);
-        hit.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22087f72),shape(a,Color.TRANSPARENT,24,Color.TRANSPARENT),null));
+        hit.setBackground(new RippleDrawable(ColorStateList.valueOf(ripple(a)),shape(a,Color.TRANSPARENT,8,Color.TRANSPARENT),null));
         hit.addView(new AgentIconView(a,icon,color),new FrameLayout.LayoutParams(dp(a,24),dp(a,24),Gravity.CENTER));hit.setOnClickListener(v->action.run());return hit;
     }
     static void iconSurface(Activity a,View button,int fill,int ink,int radius){
@@ -173,15 +178,15 @@ final class Ui {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(dp(a,14),0,dp(a,8),0);row.addView(words,p);
         if(action!=null) {
             row.addView(new AgentIconView(a,AgentIconView.Icon.CHEVRON,colors(a).muted),new LinearLayout.LayoutParams(dp(a,16),dp(a,16)));
-            row.setFocusable(true);row.setClickable(true);row.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22087f72),shape(a,Color.TRANSPARENT,12,Color.TRANSPARENT),null));row.setOnClickListener(v->action.run());
+            row.setFocusable(true);row.setClickable(true);row.setBackground(new RippleDrawable(ColorStateList.valueOf(ripple(a)),shape(a,Color.TRANSPARENT,4,Color.TRANSPARENT),null));row.setOnClickListener(v->action.run());
         }
         parent.addView(row,new LinearLayout.LayoutParams(-1,-2));return row;
     }
     // Compatibility for the unchanged control lab and developer Activity.
-    static LinearLayout surface(Activity a,LinearLayout parent,int fill) { LinearLayout v=column(a);int p=dp(a,16);v.setPadding(p,p,p,p);v.setBackground(shape(a,fill,DesignTokens.RADIUS_PANEL,colors(a).border));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(a,12),0,0);parent.addView(v,lp);return v; }
+    static LinearLayout surface(Activity a,LinearLayout parent,int fill) { LinearLayout v=column(a);v.setPadding(0,dp(a,12),0,dp(a,12));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(a,8),0,0);parent.addView(v,lp);return v; }
     static LinearLayout card(Activity a,LinearLayout parent,String eyebrow,String title) { LinearLayout v=surface(a,parent,colors(a).surface);if(!eyebrow.isEmpty())v.addView(text(a,eyebrow,12,ACCENT));v.addView(heading(a,title,20));return v; }
     static Button button(Activity a,LinearLayout parent,String label,boolean danger,Runnable action) { Button b=action(a,label,false,danger,action);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(a,10),0,0);parent.addView(b,p);return b; }
-    static TextView badge(Activity a,String label) { TextView v=text(a,label,12,ACCENT);v.setPadding(dp(a,10),dp(a,5),dp(a,10),dp(a,5));v.setBackground(shape(a,colors(a).accentSurface,20,Color.TRANSPARENT));return v; }
+    static TextView badge(Activity a,String label) { TextView v=text(a,label,12,ACCENT);v.setPadding(dp(a,8),dp(a,5),dp(a,8),dp(a,5));v.setBackground(shape(a,colors(a).accentSurface,4,Color.TRANSPARENT));return v; }
     static void showBottomDialog(Activity a,Dialog dialog,View content) {
         dialog.setContentView(content);Window w=dialog.getWindow();if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);w.setWindowAnimations(motionEnabled()?R.style.XiyanSheetAnimation:0);}
         dialog.show();if(w!=null){w.setGravity(Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);w.setDimAmount(.35f);w.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);w.setLayout(dp(a,Math.min(a.getResources().getConfiguration().screenWidthDp-16,480)),-2);}

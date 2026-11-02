@@ -75,7 +75,7 @@ final class ModelPickerDialog {
             };
             root.setFillViewport(false);root.setClipToPadding(false);root.addView(body,new android.widget.FrameLayout.LayoutParams(-1,-2));
             if(sheet){
-                root.setBackground(Ui.shape(host,c.surface,28,Color.TRANSPARENT));LinearLayout title=Ui.row(host);
+                root.setBackground(Ui.shape(host,c.surface,DesignTokens.RADIUS_SHEET,Color.TRANSPARENT));LinearLayout title=Ui.row(host);
                 title.addView(Ui.heading(host,"模型与思考",22),new LinearLayout.LayoutParams(0,-2,1));
                 title.addView(Ui.iconButton(host,AgentIconView.Icon.CLOSE,"关闭模型选择",c.muted,saved),new LinearLayout.LayoutParams(Ui.dp(host,48),Ui.dp(host,48)));body.addView(title);
             }
@@ -85,7 +85,7 @@ final class ModelPickerDialog {
             refresh=Ui.textAction(host,"刷新",()->{initialFetchAttempted=true;host.account().refreshModels();});metadata.addView(refresh,new LinearLayout.LayoutParams(-2,Ui.dp(host,48)));body.addView(metadata);
             search=new EditText(host);search.setTextSize(15);search.setTextColor(c.text);search.setHintTextColor(c.muted);search.setSingleLine(true);
             search.setHint("搜索账号模型");search.setContentDescription("搜索账号模型");search.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-            search.setMinimumHeight(Ui.dp(host,48));search.setPadding(Ui.dp(host,14),Ui.dp(host,12),Ui.dp(host,14),Ui.dp(host,12));search.setBackground(Ui.shape(host,c.raised,14,Color.TRANSPARENT));
+            search.setMinimumHeight(Ui.dp(host,48));search.setPadding(Ui.dp(host,14),Ui.dp(host,12),Ui.dp(host,14),Ui.dp(host,12));search.setBackground(Ui.shape(host,c.raised,4,Color.TRANSPARENT));
             LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,-2);sp.setMargins(0,Ui.dp(host,4),0,Ui.dp(host,12));body.addView(search,sp);
             selection=Ui.text(host,"",12,Ui.MUTED);body.addView(selection);Ui.gap(host,body,8);list=Ui.column(host);body.addView(list,new LinearLayout.LayoutParams(-1,-2));
             Ui.divider(host,body);body.addView(Ui.heading(host,"思考程度",16));Ui.gap(host,body,8);
@@ -166,7 +166,7 @@ final class ModelPickerDialog {
                     @Override public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(info);info.setClassName(Button.class.getName());}
                 };
                 row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setMinimumHeight(Ui.dp(host,60));row.setPadding(Ui.dp(host,12),Ui.dp(host,12),Ui.dp(host,12),Ui.dp(host,12));
-                row.setBackground(new RippleDrawable(ColorStateList.valueOf(c.accentSurface),Ui.shape(host,selected?c.accentSurface:Color.TRANSPARENT,12,Color.TRANSPARENT),null));
+                row.setBackground(new RippleDrawable(ColorStateList.valueOf(Ui.ripple(host)),Ui.shape(host,Color.TRANSPARENT,0,Color.TRANSPARENT),null));
                 LinearLayout labels=Ui.column(host);labels.addView(Ui.text(host,model.getDisplayName(),15,Ui.TEXT));
                 if(!model.getDisplayName().equalsIgnoreCase(model.getId()))labels.addView(Ui.text(host,model.getId(),12,Ui.MUTED));
                 if(model.getServerDeclaredAvailability()==ModelCatalog.Availability.UNAVAILABLE)labels.addView(Ui.text(host,"暂不可用",12,Ui.MUTED));row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));

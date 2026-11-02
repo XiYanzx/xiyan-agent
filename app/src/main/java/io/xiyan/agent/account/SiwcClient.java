@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import io.xiyan.agent.core.auth.LoopbackCallbackRequest;
 import io.xiyan.agent.core.auth.PendingSignIn;
 import io.xiyan.agent.core.auth.TokenClaimsPolicy;
 import io.xiyan.agent.core.model.ModelCatalog;
@@ -16,13 +15,7 @@ import io.xiyan.agent.core.response.SubscriptionTextRequest;
 import io.xiyan.agent.core.usage.QuotaSnapshot;
 import io.xiyan.agent.core.usage.ResponseTokenUsage;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -41,6 +34,9 @@ public final class SiwcClient {
     public interface Browser { void open(URI authorizationUri); }
     public static final class Snapshot {
         public final boolean connected, hasSession, reauthRequired, busy;
+        public final boolean loginRecoveryAvailable, loginAwaitingCallback;
+        public final long loginExpiresAtEpochSeconds;
+        public final String loginState;
         public final long expiresAtEpochSeconds;
         public final String message, accountLabel, inferenceText, inferenceStatus, operationStage, failureCode, catalogFormatJson, streamFormatJson;
         public final InferenceEvidence inferenceEvidence;
@@ -52,7 +48,8 @@ public final class SiwcClient {
         Snapshot(boolean hasSession, boolean reauthRequired, long expiresAt, boolean busy,
                 String message, String accountLabel, ModelCatalog catalog, String inferenceText, String inferenceStatus,
                 String operationStage, InferenceEvidence inferenceEvidence, ServiceFailure lastFailure, String failureCode,
-                String catalogFormatJson, String streamFormatJson, QuotaSnapshot quota, ResponseTokenUsage tokenUsage, String usageMessage) {
+                String catalogFormatJson, String streamFormatJson, QuotaSnapshot quota, ResponseTokenUsage tokenUsage, String usageMessage,
+                boolean loginRecoveryAvailable, boolean loginAwaitingCallback, long loginExpiresAtEpochSeconds, String loginState) {
             this.hasSession = hasSession; this.reauthRequired = reauthRequired;
             this.expiresAtEpochSeconds = expiresAt;
             this.connected = hasSession && !reauthRequired && expiresAt > now();
@@ -64,9 +61,12 @@ public final class SiwcClient {
             this.catalogFormatJson = catalogFormatJson;
             this.streamFormatJson = streamFormatJson;
             this.quota = quota; this.tokenUsage = tokenUsage; this.usageMessage = usageMessage;
+            this.loginRecoveryAvailable = loginRecoveryAvailable; this.loginAwaitingCallback = loginAwaitingCallback;
+            this.loginExpiresAtEpochSeconds = loginExpiresAtEpochSeconds; this.loginState = loginState;
         }
     }
     private interface Work { void run(long generation) throws Exception; }
+    private interface UserStart { void run(long generation); }
     private static SiwcClient instance;
     public static synchronized SiwcClient get(Context context) {
         if (instance == null) instance = new SiwcClient(context.getApplicationContext());
@@ -74,6 +74,8 @@ public final class SiwcClient {
     }
     private final Object lock = new Object();
     private final SessionStore store;
+    private final Context appContext;
+    private final PendingLoginStore pendingLoginStore;
     private final SharedPreferences installation;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -96,10 +98,22 @@ public final class SiwcClient {
     private String usageMessage = "额度等待服务返回；最近一次调用尚无 token 统计。";
     private volatile Runnable inferenceCancellation;
     private long generation;
-    private volatile ServerSocket callbackSocket;
+    private PendingLoginStore.Record recoverableLogin;
+    private LoginOperation activeLogin;
+    private String loginState = "idle";
+    private static final class LoginOperation {
+        long expected;
+        AccountLoginService.Lease lease;
+        volatile LoginFlow flow;
+        PendingLoginStore.Record record;
+        boolean consumed, completed;
+        Exception failure;
+    }
 
     private SiwcClient(Context context) {
+        appContext = context;
         store = new SessionStore(context);
+        pendingLoginStore = new PendingLoginStore(context);
         installation = context.getSharedPreferences("siwc-installation", Context.MODE_PRIVATE);
         operate("正在读取本机会话……", expected -> {
             JSONObject saved = store.read();
@@ -110,7 +124,8 @@ public final class SiwcClient {
                     saveRegistration(saved.getString("clientId"), saved.getString("subject"));
                 }
                 progress(expected, "已读取手机上的加密会话；调用前会检查有效期。");
-            } else progress(expected, "尚未登录。请通过手机系统浏览器连接 ChatGPT 订阅。");
+            } else progress(expected, "尚未登录。请通过手机系统浏览器连接 ChatGPT 账号。");
+            restorePendingState(expected);
         });
     }
     public void addObserver(Observer observer) { observers.addIfAbsent(observer); }
@@ -119,7 +134,10 @@ public final class SiwcClient {
         synchronized (lock) {
             return new Snapshot(session != null, reauthRequired, session == null ? 0 : session.optLong("expiresAt"), busy, message,
                     session == null ? "未连接" : session.optString("email", "已连接账号"), catalog, inferenceText, inferenceStatus,
-                    operationStage, inferenceEvidence, lastFailure, failureCode, catalogFormatJson, streamFormatJson, quota, tokenUsage, usageMessage);
+                    operationStage, inferenceEvidence, lastFailure, failureCode, catalogFormatJson, streamFormatJson, quota, tokenUsage, usageMessage,
+                    recoverableLogin != null && recoverableLogin.remainingMillis() > 0,
+                    activeLogin != null && activeLogin.flow != null && activeLogin.flow.awaiting(),
+                    recoverableLogin == null ? 0 : recoverableLogin.pending.getExpiresAtEpochSeconds(), loginState);
         }
     }
     public void checkEnvironment() {
@@ -132,54 +150,205 @@ public final class SiwcClient {
         });
     }
     /** Call only from an explicit user sign-in action; the browser owns login and consent. */
-    public void signIn(Browser browser) {
-        operate("正在准备手机本机登录回调……", expected -> {
-            SiwcHttp.Discovery discovery = SiwcHttp.discovery(); check(expected);
-            String host = installation.getString("hostId", null);
-            if (host == null) {
-                host = PendingSignIn.newExternalAgentHostId();
-                if (!installation.edit().putString("hostId", host).commit()) throw new IOException("Installation identity unavailable");
+    public void signIn(Browser browser) { startLogin(browser, false, null); }
+    /** Explicit recovery: rebind the original port; the user reloads the original browser callback. */
+    public void resumeSignIn() { startLogin(null, true, null); }
+    /** Sensitive input from an explicit user paste action. Never store or log this URL. */
+    public void completeSignInCallback(String callbackUri) {
+        if (callbackUri == null || callbackUri.isEmpty() || callbackUri.length() > 16_640) {
+            synchronized (lock) {
+                if (busy && activeLogin == null) return;
+                failureCode = "callback_MALFORMED_CALLBACK"; message = "请输入浏览器回调页的完整地址，本次内容未保存。";
             }
-            String issued = installation.getString("clientId", null);
-            String previousSubject;
-            synchronized (lock) { previousSubject = session == null
-                    ? issued == null ? null : installation.getString("clientSubject", null) : session.getString("subject"); }
-            if (issued != null && previousSubject == null) throw new IOException("Registration identity unavailable");
-            try (ServerSocket server = new ServerSocket()) {
-                server.setReuseAddress(false);
-                server.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 4);
-                server.setSoTimeout(1500);
-                callbackSocket = server;
-                PendingSignIn pending = PendingSignIn.create(new URI(discovery.authorize), server.getLocalPort(), issued, host, now());
-                progress(expected, "请在手机浏览器完成登录与订阅授权，完成后返回此应用。等待最多 5 分钟。");
-                main.post(() -> {
-                    try { check(expected); browser.open(pending.authorizationUri()); }
-                    catch (Exception unavailable) { cancel(); }
-                });
-                PendingSignIn.Callback callback = awaitCallback(server, pending, expected);
-                check(expected);
-                progress(expected, "已收到本机回调，正在交换官方令牌……");
+            notifyChanged(); return;
+        }
+        LoginOperation running;
+        synchronized (lock) { running = activeLogin; }
+        if (running != null && running.flow != null) {
+            try {
+                check(running.expected); running.lease.check(); running.flow.submit(callbackUri);
+                synchronized (lock) {
+                    check(running.expected); failureCode = null;
+                    message = "手动回调已通过校验，正在完成本次连接。";
+                }
+            } catch (Exception invalid) {
+                synchronized (lock) {
+                    if (generation == running.expected) {
+                        failureCode = safeFailureCode(invalid); message = safeFailure(invalid);
+                    }
+                }
+            }
+            notifyChanged();
+            return;
+        }
+        startLogin(null, true, callbackUri);
+    }
+
+    private void startLogin(Browser browser, boolean restore, String manualCallback) {
+        LoginOperation operation = new LoginOperation();
+        operate(restore ? "正在恢复本次账号连接……" : "正在准备手机本机登录回调……", expected -> {
+            try {
+                if (operation.failure != null) throw operation.failure;
+                operation.lease.awaitReady(); checkLogin(operation);
+                SiwcHttp.Discovery discovery = null;
+                if (restore) {
+                    operation.record = pendingLoginStore.read();
+                    if (operation.record == null) throw new LoginFailure(LoginFailure.Reason.PENDING_MISSING);
+                    validatePendingRegistration(operation.record);
+                    operation.flow = LoginFlow.restore(operation.record, manualCallback != null);
+                } else {
+                    pendingLoginStore.clear();
+                    synchronized (lock) { check(expected); recoverableLogin = null; }
+                    progress(expected, "登录前台保护已就绪，正在读取官方发现文档……");
+                    discovery = SiwcHttp.discovery(); checkLogin(operation);
+                    String host = installation.getString("hostId", null);
+                    if (host == null) {
+                        host = PendingSignIn.newExternalAgentHostId();
+                        if (!installation.edit().putString("hostId", host).commit()) throw new IOException("Installation identity unavailable");
+                    }
+                    String issued = installation.getString("clientId", null);
+                    String previousSubject;
+                    synchronized (lock) { previousSubject = session == null
+                            ? issued == null ? null : installation.getString("clientSubject", null) : session.getString("subject"); }
+                    if (issued != null && previousSubject == null) throw new IOException("Registration identity unavailable");
+                    operation.flow = LoginFlow.fresh(new URI(discovery.authorize), issued, host, previousSubject, pendingLoginStore);
+                    operation.record = operation.flow.record;
+                }
+                synchronized (lock) {
+                    checkLogin(operation); activeLogin = operation; recoverableLogin = operation.record; loginState = "waiting";
+                }
+                schedulePendingExpiry(operation.record);
+                if (manualCallback != null) operation.flow.submit(manualCallback);
+                else if (browser != null) {
+                    progress(expected, "本机监听与前台保护已就绪。请在浏览器完成登录；本次授权等待最多 5 分钟。");
+                    main.post(() -> {
+                        try { checkLogin(operation); browser.open(operation.record.pending.authorizationUri()); }
+                        catch (Exception unavailable) { cancelLoginIfCurrent(expected); }
+                    });
+                } else {
+                    progress(expected, "原回调端口已恢复。请在浏览器重新加载原回调页，或手动粘贴该页完整地址；沿用本次剩余时间。");
+                }
+                PendingSignIn.Callback callback = operation.flow.await(() -> checkLogin(operation));
+                checkLogin(operation);
+                pendingLoginStore.markConsumed(operation.record.id); operation.consumed = true;
+                operation.flow.close();
+                synchronized (lock) { checkLogin(operation); recoverableLogin = null; loginState = "callback_received"; failureCode = null; }
+                progress(expected, operation.flow.acknowledgementFailed()
+                        ? "有效回调已接收，浏览器页面确认未送达；正在继续验证本次连接。"
+                        : "已收到本机回调，正在交换官方令牌……");
+                if (discovery == null) { discovery = SiwcHttp.discovery(); checkLogin(operation); }
                 Map<String, String> fields = new LinkedHashMap<>();
                 fields.put("grant_type", "authorization_code"); fields.put("client_id", callback.getIssuedClientId());
-                fields.put("code", callback.getCode()); fields.put("code_verifier", pending.getCodeVerifier());
-                fields.put("redirect_uri", pending.getRedirectUri().toASCIIString()); fields.put("resource", SiwcHttp.RESOURCE);
-                JSONObject token = SiwcHttp.form(discovery.token, fields);
+                fields.put("code", callback.getCode()); fields.put("code_verifier", operation.record.pending.getCodeVerifier());
+                fields.put("redirect_uri", operation.record.pending.getRedirectUri().toASCIIString()); fields.put("resource", SiwcHttp.RESOURCE);
+                synchronized (lock) { checkLogin(operation); loginState = "exchanging"; }
+                JSONObject token = SiwcHttp.form(discovery.token, fields); checkLogin(operation);
                 progress(expected, "令牌交换响应已接收，正在验证 ID 签名……");
+                synchronized (lock) { checkLogin(operation); loginState = "verifying"; }
                 String access = tokenString(token, "access_token", true);
                 IdTokenVerifier.Verified identity = IdTokenVerifier.verify(tokenString(token, "id_token", true), access,
-                        discovery, callback.getIssuedClientId(), pending.getNonce(), previousSubject, false);
+                        discovery, callback.getIssuedClientId(), operation.record.pending.getNonce(), operation.record.previousSubject, false);
+                checkLogin(operation);
                 progress(expected, "ID 签名已通过，正在验证订阅授权范围……");
-                JSONObject saved = tokenSession(token, callback.getIssuedClientId(), identity, pending.getNonce(), null);
+                JSONObject saved = tokenSession(token, callback.getIssuedClientId(), identity, operation.record.pending.getNonce(), null);
                 progress(expected, "授权范围已通过，正在加密保存手机本机会话……");
                 synchronized (lock) {
-                    check(expected); store.write(saved); session = saved; catalog = null; reauthRequired = false;
+                    checkLogin(operation); store.write(saved); session = saved; catalog = null; reauthRequired = false;
                     resetUsage(saved);
                     inferenceText = ""; inferenceStatus = "idle"; inferenceEvidence = null;
                     saveRegistration(callback.getIssuedClientId(), identity.subject);
+                    operation.completed = true; loginState = "completed";
                 }
                 progress(expected, "官方登录与 ID 签名校验完成，会话已加密保存在手机。可以刷新账号模型目录。");
-            } finally { callbackSocket = null; }
+            } catch (Exception failure) { operation.failure = failure; throw failure; }
+            finally { finishLogin(operation); }
+        }, expected -> {
+            operation.expected = expected;
+            synchronized (lock) { loginState = "starting"; activeLogin = operation; }
+            try {
+                operation.lease = AccountLoginService.begin(appContext, () -> cancelLoginIfCurrent(expected), reason -> {
+                    LoginFlow flow;
+                    synchronized (lock) { if (generation != expected || activeLogin != operation || operation.completed) return; loginState = "interrupted"; flow = operation.flow; }
+                    if (flow != null) flow.interrupt(reason);
+                });
+            } catch (RuntimeException unavailable) { operation.failure = new LoginFailure(LoginFailure.Reason.FOREGROUND_UNAVAILABLE); }
         });
+    }
+    private void checkLogin(LoginOperation operation) throws IOException {
+        check(operation.expected); operation.lease.check();
+    }
+    private void cancelLoginIfCurrent(long expected) {
+        synchronized (lock) { if (generation != expected) return; cancel(); }
+    }
+    private void validatePendingRegistration(PendingLoginStore.Record record) throws Exception {
+        Map<String, Object> saved = record.pending.exportForEncryptedStorage();
+        if (!saved.get("externalAgentHostId").equals(installation.getString("hostId", null))) {
+            throw new LoginFailure(LoginFailure.Reason.PENDING_INVALID);
+        }
+        Object issued = saved.get("issuedClientId");
+        if (issued != null && !issued.equals(installation.getString("clientId", null))) {
+            throw new LoginFailure(LoginFailure.Reason.PENDING_INVALID);
+        }
+    }
+    private void restorePendingState(long expected) throws Exception {
+        try {
+            PendingLoginStore.Record pending = pendingLoginStore.read();
+            if (pending == null) return;
+            validatePendingRegistration(pending);
+            synchronized (lock) { check(expected); recoverableLogin = pending; loginState = "recoverable"; }
+            schedulePendingExpiry(pending);
+            progress(expected, "发现尚未完成的账号连接。可手动恢复本次连接或粘贴原回调页地址；原 5 分钟期限保持不变。");
+        } catch (LoginFailure unavailable) {
+            synchronized (lock) {
+                check(expected); recoverableLogin = null;
+                loginState = unavailable.reason == LoginFailure.Reason.PENDING_EXPIRED ? "expired" : "interrupted";
+                failureCode = safeFailureCode(unavailable); message = safeFailure(unavailable); operationStage = "正在恢复未完成的本机连接";
+            }
+        }
+    }
+    private void finishLogin(LoginOperation operation) {
+        if (operation.flow != null) operation.flow.close();
+        PendingLoginStore.Record pending = operation.record;
+        boolean unusableRecord = operation.failure instanceof LoginFailure
+                && (((LoginFailure) operation.failure).reason == LoginFailure.Reason.PENDING_INVALID
+                    || ((LoginFailure) operation.failure).reason == LoginFailure.Reason.PENDING_CONSUMED
+                    || ((LoginFailure) operation.failure).reason == LoginFailure.Reason.PENDING_EXPIRED
+                    || ((LoginFailure) operation.failure).reason == LoginFailure.Reason.PENDING_MISSING);
+        boolean clear = pending != null && (operation.completed || operation.consumed || pending.remainingMillis() <= 0
+                || unusableRecord || operation.flow != null && !operation.flow.awaiting());
+        synchronized (lock) { if (generation != operation.expected) clear = pending != null; }
+        try { if (clear) pendingLoginStore.clearIfMatches(pending.id); }
+        catch (Exception unavailable) { /* A consumed tombstone stays non-recoverable; no callback values enter diagnostics. */ }
+        synchronized (lock) {
+            if (activeLogin == operation) activeLogin = null;
+            if (generation == operation.expected) {
+                if (unusableRecord) recoverableLogin = null;
+                else if (pending != null) recoverableLogin = !clear && pending.remainingMillis() > 0 ? pending : null;
+                if (!operation.completed) loginState = recoverableLogin != null ? "recoverable"
+                        : operation.failure instanceof LoginFailure && (((LoginFailure) operation.failure).reason == LoginFailure.Reason.PENDING_EXPIRED
+                            || ((LoginFailure) operation.failure).reason == LoginFailure.Reason.AUTHORIZATION_TIMEOUT) ? "expired" : "failed";
+            }
+        }
+        if (operation.lease != null) operation.lease.close();
+        PendingLoginStore.Record next;
+        synchronized (lock) { next = recoverableLogin; }
+        if (next != null) schedulePendingExpiry(next);
+    }
+    private void schedulePendingExpiry(PendingLoginStore.Record pending) {
+        main.postDelayed(() -> {
+            synchronized (lock) {
+                if (activeLogin != null || recoverableLogin == null || !pending.id.equals(recoverableLogin.id)
+                        || pending.remainingMillis() > 0) return;
+                recoverableLogin = null; loginState = "expired";
+                message = "本次连接的原 5 分钟期限已到，请重新连接。";
+                failureCode = "login_pending_expired";
+            }
+            worker.execute(() -> {
+                try { pendingLoginStore.clearIfMatches(pending.id); }
+                catch (Exception unavailable) { /* Expired records are rejected again before any use. */ }
+            });
+            notifyChanged();
+        }, Math.max(1, pending.remainingMillis()));
     }
     public void refreshModels() {
         operate("正在读取账号模型目录……", expected -> {
@@ -297,6 +466,7 @@ public final class SiwcClient {
             JSONObject old;
             synchronized (lock) {
                 check(expected); old = session; store.clear(); session = null; catalog = null; reauthRequired = false;
+                pendingLoginStore.clear(); recoverableLogin = null; loginState = "idle";
                 resetUsage(null);
                 inferenceText = ""; inferenceStatus = "idle"; inferenceEvidence = null;
             }
@@ -317,26 +487,43 @@ public final class SiwcClient {
         });
     }
     public void cancel() {
+        LoginOperation login;
+        PendingLoginStore.Record pending;
         synchronized (lock) {
+            login = activeLogin; pending = recoverableLogin;
             generation++; message = "已取消当前操作；手机上的账号会话保留。";
+            if (login != null || pending != null) { recoverableLogin = null; loginState = "cancelled"; }
             if ("running".equals(inferenceStatus)) inferenceStatus = "cancelled";
             if ("正在检查服务返回的用量信息……".equals(operationStage)) usageMessage = "用量检查已取消；保留此前记录及采集时间。";
         }
         Runnable cancellation = inferenceCancellation;
         if (cancellation != null) cancellation.run();
-        ServerSocket server = callbackSocket;
-        if (server != null) try { server.close(); } catch (IOException ignored) { }
+        if (login != null) {
+            if (login.flow != null) login.flow.close();
+            if (login.lease != null) login.lease.close();
+        }
+        if (pending != null) worker.execute(() -> {
+            try { pendingLoginStore.clearIfMatches(pending.id); }
+            catch (Exception unavailable) { /* Only the isolated pending namespace is targeted. */ }
+        });
         notifyChanged();
     }
     private void operate(String status, Work work) {
+        operate(status, work, null);
+    }
+    private void operate(String status, Work work, UserStart start) {
         final long expected;
         synchronized (lock) {
             if (busy) return; busy = true; expected = ++generation; message = status; operationStage = status; lastFailure = null;
             failureCode = null; catalogFormatJson = null; streamFormatJson = null;
         }
         notifyChanged();
+        Exception launchFailure = null;
+        try { if (start != null) start.run(expected); }
+        catch (Exception unavailable) { launchFailure = unavailable; }
+        final Exception startupFailure = launchFailure;
         worker.execute(() -> {
-            try { work.run(expected); }
+            try { if (startupFailure != null) throw startupFailure; work.run(expected); }
             catch (Exception error) {
                 synchronized (lock) {
                     if (generation == expected) {
@@ -457,50 +644,6 @@ public final class SiwcClient {
             }
         }
     }
-    private PendingSignIn.Callback awaitCallback(ServerSocket server, PendingSignIn pending, long expected) throws Exception {
-        final long callbackEnd = SystemClock.elapsedRealtime() + PendingSignIn.LIFETIME_SECONDS * 1000;
-        while (now() < pending.getExpiresAtEpochSeconds() && SystemClock.elapsedRealtime() < callbackEnd) {
-            check(expected);
-            server.setSoTimeout((int) Math.max(1, Math.min(1500, callbackEnd - SystemClock.elapsedRealtime())));
-            try (Socket socket = server.accept()) {
-                if (!socket.getInetAddress().isLoopbackAddress()) continue;
-                final long requestEnd = Math.min(callbackEnd, SystemClock.elapsedRealtime() + 5000);
-                String target;
-                try {
-                    target = LoopbackCallbackRequest.readTarget(socket.getInputStream(), server.getLocalPort(), () -> {
-                        check(expected);
-                        long remaining = requestEnd - SystemClock.elapsedRealtime();
-                        if (remaining <= 0) throw new SocketTimeoutException("Callback request deadline exceeded");
-                        socket.setSoTimeout((int) Math.min(2000, remaining));
-                    });
-                } catch (SocketTimeoutException timeout) {
-                    continue;
-                } catch (IOException invalidRequest) {
-                    check(expected);
-                    reply(socket, 400, "无效的本机回调请求。"); continue;
-                }
-                try {
-                    PendingSignIn.Callback callback = pending.consumeCallback("http://127.0.0.1:" + server.getLocalPort() + target, now());
-                    reply(socket, 200, "已收到授权回调。请返回 Xiyan Agent 查看验证结果。");
-                    return callback;
-                } catch (PendingSignIn.AuthException invalid) {
-                    reply(socket, 400, "回调未通过校验，请返回 Xiyan Agent。");
-                    if (invalid.getReason() == PendingSignIn.Reason.AUTHORIZATION_DENIED
-                            || invalid.getReason() == PendingSignIn.Reason.AUTHORIZATION_ERROR) throw invalid;
-                }
-            } catch (SocketTimeoutException idle) { /* Bounded polling permits cancellation. */ }
-        }
-        throw new IOException("Authorization timed out");
-    }
-    private static void reply(Socket socket, int status, String text) throws IOException {
-        byte[] body = ("<!doctype html><meta charset=utf-8><title>Xiyan Agent</title><p>" + text + "</p>")
-                .getBytes(StandardCharsets.UTF_8);
-        String headers = "HTTP/1.1 " + status + (status == 200 ? " OK" : " Bad Request")
-                + "\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nReferrer-Policy: no-referrer"
-                + "\r\nContent-Security-Policy: default-src 'none'; frame-ancestors 'none'\r\nConnection: close\r\nContent-Length: " + body.length + "\r\n\r\n";
-        socket.getOutputStream().write(headers.getBytes(StandardCharsets.US_ASCII));
-        socket.getOutputStream().write(body); socket.getOutputStream().flush();
-    }
     private static ModelCatalog parseModels(JSONObject value, long fetched, String subject) throws Exception {
         JSONArray models = value.getJSONArray("models");
         if (models.length() > 1000) throw new IOException("Account model limit exceeded");
@@ -605,6 +748,7 @@ public final class SiwcClient {
         CatalogFormatFailure(String code) { super("Account model metadata validation failed"); this.code = code; }
     }
     private static String safeFailureCode(Exception error) {
+        if (error instanceof LoginFailure) return "login_" + ((LoginFailure) error).reason.name().toLowerCase(java.util.Locale.ROOT);
         if (error instanceof SiwcInference.Failure) {
             String reason = ((SiwcInference.Failure) error).reason;
             return reason != null && reason.matches("[a-z_]{1,64}") ? "inference_" + reason : "inference_failed";
@@ -623,6 +767,21 @@ public final class SiwcClient {
         return type.matches("[A-Za-z0-9_]{1,80}") ? type : "operation_failed";
     }
     private static String safeFailure(Exception error) {
+        if (error instanceof LoginFailure) {
+            switch (((LoginFailure) error).reason) {
+                case FOREGROUND_UNAVAILABLE: return "登录前台保护未能启动。请保持应用可见后重试；本次尚未打开授权页。";
+                case FOREGROUND_TIMEOUT: return "登录前台保护启动超时，请回到应用后重试。";
+                case FOREGROUND_STOPPED: return "系统已结束本次连接保护。请查看账号页的恢复状态，再继续连接。";
+                case SERVICE_TIMEOUT: return "本次连接已达到本地处理时限，请查看账号状态后重新连接。";
+                case PENDING_MISSING: return "当前没有可恢复的连接，请重新打开官方登录。";
+                case PENDING_EXPIRED: case AUTHORIZATION_TIMEOUT: return "本次 5 分钟等待已结束，原监听已关闭。请在应用重新连接。";
+                case PENDING_INVALID: return "未完成连接的本机记录未通过校验，请重新连接。";
+                case PENDING_UNAVAILABLE: return "未完成连接的加密记录暂时无法读取，请重试或重新连接。";
+                case PENDING_CONSUMED: return "上次回调已被接收，本次记录已结束。请查看账号状态，必要时重新连接。";
+                case LOOPBACK_UNAVAILABLE: return "本机回调监听暂不可用。若原连接仍在有效期内，可手动粘贴原回调页的完整地址继续。";
+                default: return "本次账号连接未完成，请查看当前恢复状态。";
+            }
+        }
         if (error instanceof CatalogFormatFailure) return "模型目录格式尚未兼容（" + ((CatalogFormatFailure) error).code + "），会话已保留。";
         if (error instanceof SessionValidationException) {
             String code = ((SessionValidationException) error).code;

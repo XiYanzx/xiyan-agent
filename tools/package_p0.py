@@ -53,6 +53,8 @@ def main():
         for source, name in (
             ('LICENSE', 'LICENSE.txt'), ('THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.md'),
             ('third_party/lucide/LICENSE', 'LUCIDE-LICENSE.txt'),
+            ('app/src/main/assets/licenses/shizuku-api-LICENSE.txt', 'SHIZUKU-API-LICENSE.txt'),
+            ('app/src/main/assets/licenses/androidx-annotation-LICENSE.txt', 'ANDROIDX-ANNOTATION-LICENSE.txt'),
             ('docs/P0-release-notes.zh-CN.md', 'P0-README.zh-CN.md'),
         ):
             shutil.copyfile(root / source, stage / name)

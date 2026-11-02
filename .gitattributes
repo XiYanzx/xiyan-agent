@@ -1,3 +1,5 @@
 third_party/lucide/** text eol=lf
 app/src/main/res/drawable/ic_lucide_*.xml text eol=lf
 app/src/main/assets/licenses/lucide-LICENSE.txt text eol=lf
+app/src/main/assets/licenses/shizuku-api-LICENSE.txt text eol=lf
+app/src/main/assets/licenses/androidx-annotation-LICENSE.txt text eol=lf

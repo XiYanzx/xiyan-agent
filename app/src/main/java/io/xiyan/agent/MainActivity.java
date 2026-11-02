@@ -17,9 +17,11 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.EditText;
 import android.widget.Toast;
 import io.xiyan.agent.account.SiwcClient;
 import io.xiyan.agent.control.XiyanAccessibilityService;
+import io.xiyan.agent.shizuku.ShizukuController;
 import io.xiyan.agent.core.model.ModelCatalog;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -54,6 +56,7 @@ public final class MainActivity extends Activity {
     };
     private final SiwcClient.Observer accountObserver=()->runOnUiThread(this::refresh);
     private final XiyanAccessibilityService.StateListener controlObserver=state->runOnUiThread(this::refresh);
+    private final Runnable shizukuObserver=()->runOnUiThread(this::refresh);
 
     @Override public void onCreate(Bundle savedState) {
         Ui.applyTheme(this);super.onCreate(savedState);
@@ -90,11 +93,12 @@ public final class MainActivity extends Activity {
     @Override protected void onStart() {
         super.onStart();started=true;account.addObserver(accountObserver);
         XiyanAccessibilityService.addStateListener(controlObserver);refresh();handler.postDelayed(clockRefresh,30000);
+        ShizukuController.getInstance(this).addListener(shizukuObserver);
     }
     @Override protected void onResume() {super.onResume();refresh();}
     @Override protected void onStop() {
         started=false;handler.removeCallbacks(clockRefresh);account.removeObserver(accountObserver);
-        XiyanAccessibilityService.removeStateListener(controlObserver);super.onStop();
+        XiyanAccessibilityService.removeStateListener(controlObserver);ShizukuController.getInstance(this).removeListener(shizukuObserver);super.onStop();
     }
     @Override protected void onDestroy() {
         if(content!=null)content.leave();
@@ -141,7 +145,7 @@ public final class MainActivity extends Activity {
         boolean child=screen==Screen.APPEARANCE||screen==Screen.CONTROLS||screen==Screen.ABOUT||screen==Screen.ACCOUNT;
         toolbar.addView(Ui.iconButton(this,child?AgentIconView.Icon.BACK:AgentIconView.Icon.MENU,
                 child?"返回":"打开导航",c.text,child?this::handleBack:drawer::open),new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
-        toolbarTitle=Ui.heading(this,screen==Screen.CHAT?"Xiyan":screen.title,20);
+        toolbarTitle=Ui.heading(this,screen==Screen.CHAT?"对话":screen.title,20);
         toolbar.addView(toolbarTitle,new LinearLayout.LayoutParams(0,-2,1));
         toolbarAction=null;
         if(screen==Screen.CHAT)toolbar.addView(Ui.iconButton(this,AgentIconView.Icon.PLUS,"新建对话",c.accent,this::newChat),
@@ -155,22 +159,23 @@ public final class MainActivity extends Activity {
     Screen currentScreen(){return screen;}
     private void pageAction(){
         SiwcClient.Snapshot s=account.snapshot();
-        if(s.busy||"running".equals(s.inferenceStatus)){emergencyStop();return;}
+        if(anyOperationBusy(s)){emergencyStop();return;}
         android.widget.PopupMenu menu=new android.widget.PopupMenu(this,toolbarAction);
         menu.getMenu().add("停止后续手机动作").setOnMenuItemClickListener(item->{emergencyStop();return true;});
         menu.show();
     }
     private void updateToolbarAction(SiwcClient.Snapshot snapshot){
-        if(toolbarAction==null)return;boolean active=snapshot.busy||"running".equals(snapshot.inferenceStatus);
+        if(toolbarAction==null)return;boolean active=anyOperationBusy(snapshot);
         Ui.Colors colors=Ui.colors(this);
         ((AgentIconView)toolbarAction.getChildAt(0)).appearance(active?AgentIconView.Icon.STOP:AgentIconView.Icon.MORE,active?colors.alert:colors.muted);
         toolbarAction.setContentDescription(active?"停止当前回复与后续手机动作":"页面操作");
         if(active!=toolbarActive){
             toolbarActive=active;toolbarAction.setBackground(new android.graphics.drawable.RippleDrawable(
-                    android.content.res.ColorStateList.valueOf(0x22087f72),Ui.shape(this,active?colors.alertSurface:Color.TRANSPARENT,20,Color.TRANSPARENT),null));
+                    android.content.res.ColorStateList.valueOf(Ui.ripple(this)),Ui.shape(this,active?colors.alertSurface:Color.TRANSPARENT,8,Color.TRANSPARENT),null));
         }
     }
     int chatViewportHeight(){return toolbar.getParent() instanceof View?((View)toolbar.getParent()).getHeight():0;}
+    boolean anyOperationBusy(SiwcClient.Snapshot s){return s.busy||"running".equals(s.inferenceStatus)||ShizukuController.getInstance(this).snapshot().busy;}
     void compactChatChrome(boolean compact){toolbar.setVisibility(compact&&screen==Screen.CHAT?View.GONE:View.VISIBLE);}
     void openNavigation(){drawer.open();}
     private void refresh() {
@@ -281,7 +286,7 @@ public final class MainActivity extends Activity {
     }
     void sendPrompt() {
         SiwcClient.Snapshot snapshot=account.snapshot();
-        if(snapshot.busy||"running".equals(snapshot.inferenceStatus)){emergencyStop();return;}
+        if(anyOperationBusy(snapshot)){emergencyStop();return;}
         ModelCatalog.Selection selection=configuredSelection(snapshot);
         if(selection==null){openModelPicker();return;}
         if(draft.trim().isEmpty()){toast("请先写下想发送的内容");return;}
@@ -292,6 +297,7 @@ public final class MainActivity extends Activity {
         refresh();
     }
     void emergencyStop() {
+        ShizukuController.getInstance(this).stop();
         XiyanAccessibilityService service=XiyanAccessibilityService.getConnectedService();
         if(service!=null)service.emergencyStop();
         account.cancel();diagnostics.record("停止请求",service==null?"服务未连接，无可撤销的控制会话":"已请求撤销后续手势授权");
@@ -299,11 +305,26 @@ public final class MainActivity extends Activity {
     }
     void explainSignIn() {
         new AlertDialog.Builder(this).setTitle("连接 ChatGPT 账号")
-                .setMessage("将在系统浏览器中由你完成官方登录和授权，完成后返回 Xiyan。")
+                .setMessage("在系统浏览器完成官方登录和授权。等待期间应用会显示登录通知，保留本机回调；完成后返回 Xiyan。")
                 .setNegativeButton("稍后",null).setPositiveButton("继续连接",(d,w)->account.signIn(uri->{
                     try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(uri.toASCIIString())));}
                     catch(ActivityNotFoundException unavailable){account.cancel();toast("请先安装浏览器");}
                 })).show();
+    }
+    void showLoginCallback(){
+        SiwcClient.Snapshot snapshot=account.snapshot();
+        if(!snapshot.loginRecoveryAvailable||(snapshot.busy&&!snapshot.loginAwaitingCallback)){toast("请先开始或恢复本次连接");return;}
+        EditText value=new EditText(this);value.setHint("粘贴手机浏览器中的本次回调地址");value.setContentDescription("私密登录回调地址");
+        value.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        value.setSaveEnabled(false);value.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+        value.setMinHeight(Ui.dp(this,48));value.setMinimumHeight(Ui.dp(this,48));value.setPadding(Ui.dp(this,20),Ui.dp(this,12),Ui.dp(this,20),Ui.dp(this,12));
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("恢复浏览器回调")
+                .setMessage("如果手机浏览器已跳转到 127.0.0.1 且页面无法打开，在手机复制完整地址并粘贴到这里。应用会核对本次连接的地址、时限和安全参数。")
+                .setView(value).setNegativeButton("继续等待",null).setPositiveButton("完成本次连接",(d,w)->{
+                    String callback=value.getText().toString();value.setText("");account.completeSignInCallback(callback);
+                }).create();
+        dialog.setOnDismissListener(d->value.setText(""));dialog.show();
+        if(dialog.getWindow()!=null)dialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
     }
     void signOut() {
         new AlertDialog.Builder(this).setTitle("退出本机账号？").setMessage("移除本机保存的账号连接，并请求撤销授权。")
@@ -311,6 +332,7 @@ public final class MainActivity extends Activity {
     }
     void changeTheme(String value){getSharedPreferences("xiyan_appearance",MODE_PRIVATE).edit().putString("theme",value).apply();recreate();}
     void openDeveloper(){startActivity(new Intent(this,DeveloperActivity.class));}
+    void openShizuku(){startActivity(new Intent(this,ShizukuControlActivity.class));}
     void openAccessibilitySettings(){try{startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}catch(ActivityNotFoundException e){toast("系统未提供此设置入口");}}
     void openUrl(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(ActivityNotFoundException e){toast("请先安装浏览器");}}
     void toast(String value){Toast.makeText(this,value,Toast.LENGTH_SHORT).show();}

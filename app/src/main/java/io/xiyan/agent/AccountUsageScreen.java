@@ -26,7 +26,7 @@ final class AccountUsageScreen implements ScreenContent {
     private TextView input,output,cached,cacheWrite,reasoning;
     private LinearLayout windows,credits,tokenPair,tokenDetails,quotaNotice;
     private ProgressBar progress;
-    private Button primary,more,logout,cancel,startChat,connect;
+    private Button primary,more,logout,cancel,startChat,connect,recover,importCallback;
     private View environment,accountFeedback,accountNavigation;
     private QuotaSnapshot renderedQuota;
     private ResponseTokenUsage renderedTokens;
@@ -41,6 +41,7 @@ final class AccountUsageScreen implements ScreenContent {
     }
 
     private void buildAccount(LinearLayout page) {
+        Ui.editorial(host,page,"03 / ACCOUNT","连接你的模型。");
         Ui.Colors c=Ui.colors(host);
         LinearLayout summary=Ui.surface(host,page,c.surface);
         removeTopMargin(summary);
@@ -62,6 +63,8 @@ final class AccountUsageScreen implements ScreenContent {
             if(current.hasSession&&!current.reauthRequired)host.account().refreshModels();else host.explainSignIn();
         });
         addAction(summary,primary,12);
+        recover=Ui.action(host,"恢复本次连接",true,false,()->host.account().resumeSignIn());addAction(summary,recover,8);
+        importCallback=Ui.textAction(host,"浏览器回调无法打开？",host::showLoginCallback);addAction(summary,importCallback,4);
         more=Ui.textAction(host,"更多账号操作",()->new AlertDialog.Builder(host).setTitle("账号操作")
                 .setItems(new String[]{"重新授权","退出本机账号"},(dialog,which)->{if(which==0)host.explainSignIn();else host.signOut();})
                 .setNegativeButton("取消",null).show());
@@ -77,11 +80,12 @@ final class AccountUsageScreen implements ScreenContent {
     }
 
     private void buildUsage(LinearLayout page) {
+        Ui.editorial(host,page,"04 / USAGE","看清每次用量。");
         Ui.Colors c=Ui.colors(host);
         LinearLayout recent=Ui.surface(host,page,c.surface);
         removeTopMargin(recent);
         TextView eyebrow=Ui.text(host,"最近一次完成调用",13,Ui.MUTED);eyebrow.setAccessibilityHeading(true);recent.addView(eyebrow);
-        total=Ui.heading(host,"",36);total.setFontFeatureSettings("tnum");recent.addView(total,new LinearLayout.LayoutParams(-1,-2));
+        total=Ui.heading(host,"",52);total.setFontFeatureSettings("tnum");recent.addView(total,new LinearLayout.LayoutParams(-1,-2));
         totalUnit=Ui.text(host,"token",13,Ui.MUTED);recent.addView(totalUnit);
         tokenTime=Ui.text(host,"",12,Ui.MUTED);recent.addView(tokenTime);
         tokenPair=Ui.column(host);boolean stacked=stacked();tokenPair.setOrientation(stacked?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
@@ -94,7 +98,7 @@ final class AccountUsageScreen implements ScreenContent {
         Ui.section(host,page,"官方额度");
         quotaNotice=Ui.row(host);quotaNotice.setGravity(Gravity.TOP);
         quotaNotice.setPadding(Ui.dp(host,12),Ui.dp(host,12),Ui.dp(host,12),Ui.dp(host,12));
-        quotaNotice.setBackground(Ui.shape(host,c.raised,14,Color.TRANSPARENT));
+        quotaNotice.setBackground(Ui.shape(host,c.raised,4,Color.TRANSPARENT));
         quotaNotice.addView(new AgentIconView(host,AgentIconView.Icon.INFO,c.muted),new LinearLayout.LayoutParams(Ui.dp(host,20),Ui.dp(host,20)));
         quotaMessage=Ui.text(host,"",13,Ui.MUTED);LinearLayout.LayoutParams note=new LinearLayout.LayoutParams(0,-2,1);note.setMargins(Ui.dp(host,8),0,0,0);quotaNotice.addView(quotaMessage,note);
         page.addView(quotaNotice,new LinearLayout.LayoutParams(-1,-2));
@@ -145,6 +149,9 @@ final class AccountUsageScreen implements ScreenContent {
         accountFeedback.setVisibility(s.busy||!note.isEmpty()?View.VISIBLE:View.GONE);
         primary.setText(s.busy?"正在处理…":!s.hasSession?"连接 ChatGPT":s.reauthRequired?"重新连接账号":s.connected?"刷新连接与模型":"续期并刷新模型");
         Ui.enabled(primary,!s.busy);Ui.enabled(environment,!s.busy);
+        primary.setVisibility(s.loginRecoveryAvailable&&!s.busy?View.GONE:View.VISIBLE);
+        recover.setVisibility(s.loginRecoveryAvailable&&!s.busy?View.VISIBLE:View.GONE);
+        importCallback.setVisibility(s.loginRecoveryAvailable&&(!s.busy||s.loginAwaitingCallback)?View.VISIBLE:View.GONE);
         more.setVisibility(s.hasSession&&!s.reauthRequired?View.VISIBLE:View.GONE);Ui.enabled(more,!s.busy);
         logout.setVisibility(s.hasSession&&s.reauthRequired?View.VISIBLE:View.GONE);Ui.enabled(logout,!s.busy);
         cancel.setVisibility(s.busy?View.VISIBLE:View.GONE);
@@ -152,7 +159,7 @@ final class AccountUsageScreen implements ScreenContent {
 
     private void renderTokens(ResponseTokenUsage usage) {
         boolean available=usage!=null;
-        total.setTextSize(available?36:22);set(total,available?number(usage.getTotalTokens()):"暂无调用统计");
+        total.setTextSize(available?52:22);set(total,available?number(usage.getTotalTokens()):"暂无调用统计");
         total.setContentDescription(available?"总计 "+number(usage.getTotalTokens())+" token":"暂无完成调用的 token 统计");
         set(totalUnit,available?"token":"完成一次对话后查看实际用量。");tokenTime.setVisibility(available?View.VISIBLE:View.GONE);
         set(tokenTime,available?"完成调用 · "+Ui.time(usage.getObservedAtEpochMillis()):"");

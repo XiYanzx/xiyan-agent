@@ -31,9 +31,32 @@ final class SessionStore {
     private static final int MAX_ENVELOPE_BYTES = 512 * 1024;
     private final AtomicFile file;
     private final String alias;
+    private final String associatedData;
     SessionStore(Context context) {
         alias = ALIAS;
+        associatedData = "xiyan-siwc-session-v1";
         file = new AtomicFile(new File(context.getNoBackupFilesDir(), "account/siwc-session.bin"));
+    }
+    private SessionStore(Context context, boolean pendingAuthorization) {
+        if (!pendingAuthorization) throw new IllegalArgumentException("Invalid pending store purpose");
+        alias = "xiyan.siwc.pending.v1";
+        associatedData = "xiyan-siwc-pending-v1";
+        file = new AtomicFile(new File(context.getNoBackupFilesDir(), "account/siwc-pending.bin"));
+    }
+    static SessionStore pendingAuthorization(Context context) { return new SessionStore(context, true); }
+    /** Synthetic pending storage has its own canonical UUID, key, file and authenticated-data purpose. */
+    private SessionStore(Context context, String testNamespace, boolean pendingAuthorization) {
+        if (!pendingAuthorization) throw new IllegalArgumentException("Invalid synthetic pending purpose");
+        UUID namespace = UUID.fromString(testNamespace);
+        if (namespace.version() != 4 || namespace.variant() != 2 || !namespace.toString().equals(testNamespace)) {
+            throw new IllegalArgumentException("Invalid synthetic credential namespace");
+        }
+        alias = "xiyan.siwc.pending.test." + testNamespace;
+        associatedData = "xiyan-siwc-pending-test-v1:" + testNamespace;
+        file = new AtomicFile(new File(context.getNoBackupFilesDir(), "account-tests/" + testNamespace + "/siwc-pending.bin"));
+    }
+    static SessionStore pendingAuthorizationTest(Context context, String testNamespace) {
+        return new SessionStore(context, testNamespace, true);
     }
     /** Isolated synthetic-data seam; accepts only a fresh canonical UUID v4 namespace. */
     SessionStore(Context context, String testNamespace) {
@@ -42,6 +65,7 @@ final class SessionStore {
             throw new IllegalArgumentException("Invalid synthetic credential namespace");
         }
         alias = "xiyan.siwc.test." + testNamespace;
+        associatedData = "xiyan-siwc-session-v1";
         file = new AtomicFile(new File(context.getNoBackupFilesDir(), "account-tests/" + testNamespace + "/siwc-session.bin"));
     }
     JSONObject read() throws Exception {
@@ -65,7 +89,7 @@ final class SessionStore {
             if (iv.length != 12) throw new java.io.IOException("Invalid session IV");
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, key(false), new GCMParameterSpec(128, iv));
-            cipher.updateAAD("xiyan-siwc-session-v1".getBytes(StandardCharsets.US_ASCII));
+            cipher.updateAAD(associatedData.getBytes(StandardCharsets.US_ASCII));
             byte[] ciphertext = Base64.getDecoder().decode(envelope.getString("data"));
             if (ciphertext.length > MAX_PLAIN_BYTES + 16) throw new java.io.IOException("Session data limit exceeded");
             byte[] plain = cipher.doFinal(ciphertext);
@@ -87,7 +111,7 @@ final class SessionStore {
         if (parent == null || (!parent.isDirectory() && !parent.mkdirs())) throw new java.io.IOException("Session directory unavailable");
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, key(true));
-        cipher.updateAAD("xiyan-siwc-session-v1".getBytes(StandardCharsets.US_ASCII));
+        cipher.updateAAD(associatedData.getBytes(StandardCharsets.US_ASCII));
         JSONObject envelope = new JSONObject().put("version", 1)
                 .put("iv", Base64.getEncoder().encodeToString(cipher.getIV()))
                 .put("data", Base64.getEncoder().encodeToString(cipher.doFinal(plain)));
