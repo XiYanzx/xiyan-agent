@@ -6,12 +6,13 @@
 
 最新要求：**编译、测试、打包仅在 Codex Cloud；不在 GitHub 上构建。** GitHub 保存源码并分发云端构建的 Release。详见[最新需求补充](docs/REQUIREMENTS-ADDENDUM.zh-CN.md)，该要求覆盖原任务书的自动 Actions 构建条款。
 
-P0 验证工具提供中文深色界面、权限状态、真实设备信息、测试台窗口元数据、Android 11+ 内存截图、仅限本页的单步点击/滑动复核、停止入口与本机诊断导出。APK 不申请互联网权限，未打包 Codex/V8。核心动作门和动态模型目录解析有独立测试；尚未整合为自主执行引擎。
+P0 验证工具提供中文深色界面、权限状态、真实设备信息、测试台窗口元数据、Android 14+ 窗口内存截图、仅限本页的单步点击/滑动复核、停止入口与本机诊断导出。APK 不申请互联网权限，未打包 Codex/V8。核心动作门和动态模型目录解析有独立测试；尚未整合为自主执行引擎。
 
 | 材料 | 内容 |
 | --- | --- |
 | [完整任务书](docs/REQUIREMENTS.zh-CN.md) | 用户要求及 P0–P6 验收 |
 | [P0 研究报告](docs/P0-feasibility.md) | 官方账号、模型、运行时与手机控制路线 |
+| [P0 开发状态](docs/P0-STATUS.zh-CN.md) | 已实现项、构建证据和未过门槛 |
 | [运行时实测](docs/runtime/P0-RUNTIME-SPIKE.zh-CN.md) | 实际命令、退出码、阻碍与原始证据 |
 | [架构](docs/architecture-p0.zh-CN.md) | 当前模块及实现边界 |
 | [模型兼容](docs/model-compatibility.zh-CN.md) | 动态目录解析与未接入项 |

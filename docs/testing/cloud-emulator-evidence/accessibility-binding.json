@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/workspace/toolchains/android-sdk/platform-tools/adb",
+    "-s",
+    "emulator-5554",
+    "shell",
+    "dumpsys",
+    "accessibility"
+  ],
+  "started_utc": "2026-11-02T03:33:22.432969+00:00",
+  "finished_utc": "2026-11-02T03:33:23.366739+00:00",
+  "elapsed_seconds": 0.934,
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": "51-accessibility-binding-state.txt",
+  "stderr": "51-accessibility-binding-state.stderr.txt",
+  "platform": "cloud Android emulator; not a physical device"
+}

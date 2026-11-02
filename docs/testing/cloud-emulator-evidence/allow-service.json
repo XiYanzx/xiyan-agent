@@ -1,0 +1,20 @@
+{
+  "command": [
+    "/workspace/toolchains/android-sdk/platform-tools/adb",
+    "-s",
+    "emulator-5554",
+    "shell",
+    "input",
+    "tap",
+    "350",
+    "994"
+  ],
+  "started_utc": "2026-11-02T03:31:12.736205+00:00",
+  "finished_utc": "2026-11-02T03:31:13.522184+00:00",
+  "elapsed_seconds": 0.786,
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": "45-allow-emulator-test-service.txt",
+  "stderr": "45-allow-emulator-test-service.stderr.txt",
+  "platform": "cloud Android emulator; not a physical device"
+}

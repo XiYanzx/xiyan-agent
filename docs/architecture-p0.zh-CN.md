@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | [MainActivity](../app/src/main/java/io/xiyan/agent/MainActivity.java) | 中文首页、模式偏好、权限设置入口、停止入口、诊断导出 | 模式选择只保存偏好，不启动通用或游戏引擎；模型和额度显示未连接或未知 |
 | [TestPadActivity](../app/src/main/java/io/xiyan/agent/TestPadActivity.java) | 本应用内观察、内存截图、单步点击和滑动验证 | 坐标来自本页真实布局；用目标点击计数和滚动位置复核，不涉及第三方 App 或真实游戏 |
+| [CaptureRequestTracker](../app/src/main/java/io/xiyan/agent/CaptureRequestTracker.java) | 清除、停止、退出与新截图请求使旧回调失效，迟到或重复图像被释放 | 实际接线 TestPad；单元测试验证交付语义，未替代设备截图测试 |
 | [XiyanAccessibilityService](../app/src/main/java/io/xiyan/agent/control/XiyanAccessibilityService.java) | 系统无障碍连接、窗口元数据与有界节点计数、截图、短手势、自有授权撤销逻辑 | 截图与动作限于默认显示器上解锁、前台且有焦点的 TestPad；没有任务执行引擎 |
 | [Diagnostics](../app/src/main/java/io/xiyan/agent/Diagnostics.java) | SharedPreferences 保存最近 40 条应用生成事件、JSON 导出 | 全进程共享锁下重新读写，避免不同界面覆盖事件；不是完整执行审计、任务数据库或检查点 |
 | [RuntimeProbe](../app/src/main/java/io/xiyan/agent/RuntimeProbe.java) | 显示 API、ABI、系统页大小及运行时缺失状态 | 应用未打包 Codex app-server 或 code-mode-host，不下载或执行它们 |
@@ -28,8 +29,9 @@
 - 停止与最终手势提交共享控制器自己的锁。停止递增 generation 并撤销授权，旧代次不能继续派发；系统已经接收的手势仍可能产生触点，不能宣称物理动作被撤回。
 - 操作超时为 2 秒。停止或超时不能作为平台动作结束的证据；已被平台接受的操作保留占位等待回调，服务断开另行清理状态。迟到回调不会恢复旧授权。
 - TestPad 离开前台会撤销控制，清理界面等待回调和内存截图；旋转或显示配置变化需要重新启用。系统完成回调只说明手势结束，TestPad 还会检查实际计数或滚动位置。
+- 截图独立使用请求 token。清除、停止和退出会使待返回图像失效，迟到或重复回调只释放资源，不重新显示；图像只作预览，不直接作为动作坐标图。
 
-窗口指纹能检查窗口和几何变化，不能保证识别同一窗口内的全部画面语义变化；当前没有截图视觉规划或连续动作批次。最低 SDK 设为 Android 10，但该版本截图适配未实现；Android 11 及以上使用无障碍截图 API 的行为仍需真实设备确认。空节点游戏画面的纯视觉路径尚未实现。
+窗口指纹能检查窗口和几何变化，不能保证识别同一窗口内的全部画面语义变化；当前没有截图视觉规划或连续动作批次。最低 SDK 设为 Android 10；当前 P0 在 API29–33 禁止截图，API34+ 仅调用 takeScreenshotOfWindow。窗口截图边界仍需真实设备的分屏、覆盖层与权限撤销测试。空节点游戏画面的纯视觉路径尚未实现。
 
 ## 纯 Java 协议的验证范围
 
@@ -38,6 +40,8 @@
 `ActionGate` 的租约绑定 taskId 和 generation，动作绑定观察 ID、序号与截止时间；屏幕状态包含 windowId、screenEpoch、尺寸和方向。派发和结果确认都会重新检查。平台适配器必须真实维护 screenEpoch、观察可用性、权限事件和后置条件；它们不会由纯 Java 核心自行识别。
 
 这些测试只能验证内存中的协议行为。它们没有运行 Android 控制器，不能证明真实截图新鲜度、设备坐标、系统手势取消或停止后的触点行为。`ActionGate` 也不是跨进程设备锁或持久任务监督器。
+
+应用模块另有实际接线的 [CaptureRequestTrackerTest](../app/src/test/java/io/xiyan/agent/CaptureRequestTrackerTest.java) 与 [WindowCapturePolicyTest](../app/src/test/java/io/xiyan/agent/control/WindowCapturePolicyTest.java)，共12项，覆盖迟到/重复图像释放、撤销与交付竞争，以及窗口截图的平台、包名、显示器和图像预算限制。它们不证明系统返回像素的设备隔离行为。
 
 ## 后续接线与验收
 

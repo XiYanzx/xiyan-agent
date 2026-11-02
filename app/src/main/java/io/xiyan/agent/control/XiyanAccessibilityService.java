@@ -45,7 +45,6 @@ public final class XiyanAccessibilityService extends AccessibilityService {
     private static final int MAX_NODES = 256;
     private static final int MAX_DEPTH = 32;
     private static final long TREE_BUDGET_MS = 50;
-    private static final long MAX_SCREENSHOT_PIXELS = 16_777_216;
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final CopyOnWriteArraySet<StateListener> LISTENERS =
             new CopyOnWriteArraySet<>();
@@ -133,10 +132,14 @@ public final class XiyanAccessibilityService extends AccessibilityService {
         public final int rootTop;
         public final int rootRight;
         public final int rootBottom;
+        public final int windowLeft;
+        public final int windowTop;
+        public final int windowRight;
+        public final int windowBottom;
 
         private Observation(long id, long generation, String packageName, int windowId,
                             int displayId, DisplayGeometry display, Counts counts,
-                            boolean testPadForeground, Rect rootBounds) {
+                            boolean testPadForeground, Rect rootBounds, Rect windowBounds) {
             this.id = id;
             this.generation = generation;
             this.observedElapsedRealtimeMs = SystemClock.elapsedRealtime();
@@ -156,16 +159,25 @@ public final class XiyanAccessibilityService extends AccessibilityService {
             this.rootTop = rootBounds.top;
             this.rootRight = rootBounds.right;
             this.rootBottom = rootBounds.bottom;
+            this.windowLeft = windowBounds.left;
+            this.windowTop = windowBounds.top;
+            this.windowRight = windowBounds.right;
+            this.windowBottom = windowBounds.bottom;
         }
     }
 
     /**
      * In-memory image ownership passes to the callback. Close after the ImageView has
      * released it. This service neither saves nor uploads the returned bitmap.
+     * Window image dimensions are not a calibrated mapping to display coordinates.
      */
     public static final class ScreenshotFrame implements AutoCloseable {
         public final Bitmap bitmap;
         public final Observation observation;
+        public final String captureScope = WindowCapturePolicy.SCOPE_WINDOW;
+        public final int captureWindowId;
+        public final int imageWidthPx;
+        public final int imageHeightPx;
         public final long requestedElapsedRealtimeMs;
         public final long receivedElapsedRealtimeMs;
         // Android's screenshot timestamp uses uptimeMillis, not elapsedRealtime.
@@ -176,6 +188,9 @@ public final class XiyanAccessibilityService extends AccessibilityService {
                                 long platformTimestampUptimeMillis) {
             this.bitmap = bitmap;
             this.observation = observation;
+            this.captureWindowId = observation.windowId;
+            this.imageWidthPx = bitmap.getWidth();
+            this.imageHeightPx = bitmap.getHeight();
             this.requestedElapsedRealtimeMs = requestedElapsedRealtimeMs;
             this.receivedElapsedRealtimeMs = receivedElapsedRealtimeMs;
             this.platformTimestampUptimeMillis = platformTimestampUptimeMillis;
@@ -354,7 +369,7 @@ public final class XiyanAccessibilityService extends AccessibilityService {
 
     public void cancelCurrentOperation() { revoke("当前操作已取消；需要重新手动启用", false); }
 
-    /** P0 screenshots are also restricted to the visible TestPad; API29 is explicit unsupported. */
+    /** Window-only TestPad preview. API29–33 have no fallback to display capture. */
     public void captureScreenshot(Callback<ScreenshotFrame> callback) {
         long requestedGeneration = generation.get();
         onMain(() -> {
@@ -366,9 +381,9 @@ public final class XiyanAccessibilityService extends AccessibilityService {
                 deliver(callback, failure(Status.DISCONNECTED, "无障碍服务未连接"));
                 return;
             }
-            if (Build.VERSION.SDK_INT < 30) {
+            if (Build.VERSION.SDK_INT < WindowCapturePolicy.MIN_API) {
                 deliver(callback, failure(Status.SCREENSHOT_UNSUPPORTED,
-                        "Android 10 截图尚未实现；后续需用户同意的 MediaProjection 适配器"));
+                        "当前 P0 仅支持 Android 14（API34）及以上的本页窗口截图；低版本不执行整屏截图"));
                 return;
             }
             if (operation != null) {
@@ -379,6 +394,13 @@ public final class XiyanAccessibilityService extends AccessibilityService {
             if (observed.isSuccess()) observed = requireTestPad(observed.value);
             if (!observed.isSuccess()) {
                 deliver(callback, failure(observed.status, observed.message));
+                return;
+            }
+            WindowCapturePolicy.Plan capturePlan = WindowCapturePolicy.plan(Build.VERSION.SDK_INT,
+                    OWN_PACKAGE, observed.value.packageName, observed.value.testPadForeground,
+                    observed.value.windowId, observed.value.displayId);
+            if (capturePlan == null) {
+                deliver(callback, failure(Status.WRONG_WINDOW, "无法确认当前 TestPad 窗口，未执行截图"));
                 return;
             }
             synchronized (gate) { armed = false; }
@@ -394,7 +416,7 @@ public final class XiyanAccessibilityService extends AccessibilityService {
                         finish(op, failure(Status.CANCELLED, "截图请求已撤销"));
                         return;
                     }
-                    takeScreenshot(Display.DEFAULT_DISPLAY, getMainExecutor(),
+                    takeScreenshotOfWindow(capturePlan.windowId, getMainExecutor(),
                             new TakeScreenshotCallback() {
                                 @Override public void onSuccess(ScreenshotResult screenshot) {
                                     receiveScreenshot(op, screenshot);
@@ -406,7 +428,7 @@ public final class XiyanAccessibilityService extends AccessibilityService {
                                 }
                             });
                     op.platformAccepted = true;
-                    stateMessage = "正在截取 TestPad；图像仅在内存中返回";
+                    stateMessage = "正在截取 TestPad 窗口；图像仅在内存中返回";
                 }
                 publishState();
             } catch (RuntimeException exception) {
@@ -564,18 +586,22 @@ public final class XiyanAccessibilityService extends AccessibilityService {
             String packageName = packageValue == null ? "" : packageValue.toString();
             Rect rootBounds = new Rect();
             root.getBoundsInScreen(rootBounds);
+            Rect windowBounds = new Rect();
             int displayId = Display.DEFAULT_DISPLAY;
             window = root.getWindow();
+            if (window != null) window.getBoundsInScreen(windowBounds);
             if (Build.VERSION.SDK_INT >= 30) {
                 // getRootInActiveWindow may return a root on another logical display.
                 displayId = window == null ? -1 : window.getDisplayId();
             }
             boolean pad = isPadFocused() && OWN_PACKAGE.equals(packageName)
                     && displayId == Display.DEFAULT_DISPLAY && root.isVisibleToUser()
-                    && window != null && window.isActive() && window.isFocused();
+                    && window != null && root.getWindowId() == window.getId()
+                    && window.isActive() && window.isFocused();
             Counts counts = countTree ? countNodes(root) : new Counts();
             return success(new Observation(observationIds.incrementAndGet(), observedGeneration,
-                    packageName, root.getWindowId(), displayId, geometry, counts, pad, rootBounds),
+                    packageName, root.getWindowId(), displayId, geometry, counts, pad,
+                    rootBounds, windowBounds),
                     "已读取窗口元数据；未读取节点文本");
         } catch (RuntimeException exception) {
             return failure(Status.NO_ACTIVE_WINDOW, "读取活动窗口失败，请确认服务授权和前台页面");
@@ -646,9 +672,9 @@ public final class XiyanAccessibilityService extends AccessibilityService {
     }
 
     // This native-SDK-only module intentionally avoids an AndroidX annotation dependency.
-    // The sole caller is an API30 callback constructed behind the SDK check above.
+    // The sole caller is an API34 window-capture callback behind the SDK check above.
     @android.annotation.SuppressLint("UseRequiresApi")
-    @android.annotation.TargetApi(30)
+    @android.annotation.TargetApi(34)
     private void receiveScreenshot(Operation<ScreenshotFrame> op, ScreenshotResult screenshot) {
         HardwareBuffer buffer = null;
         Bitmap hardwareBitmap = null;
@@ -666,7 +692,7 @@ public final class XiyanAccessibilityService extends AccessibilityService {
                 finish(op, failure(Status.CANCELLED, "截图期间窗口已变化，图像已丢弃"));
                 return;
             }
-            if ((long) buffer.getWidth() * buffer.getHeight() > MAX_SCREENSHOT_PIXELS) {
+            if (!WindowCapturePolicy.isImageSizeAllowed(buffer.getWidth(), buffer.getHeight())) {
                 finish(op, failure(Status.SCREENSHOT_FAILED, "截图超过 P0 内存尺寸限制"));
                 return;
             }
@@ -676,15 +702,16 @@ public final class XiyanAccessibilityService extends AccessibilityService {
                 return;
             }
             copy = hardwareBitmap.copy(Bitmap.Config.ARGB_8888, false);
-            if (copy == null || copy.getWidth() != op.observation.widthPx
-                    || copy.getHeight() != op.observation.heightPx) {
-                finish(op, failure(Status.DISPLAY_CHANGED, "截图尺寸与观察不一致，图像已丢弃"));
+            // The window API captures its Surface, whose dimensions need not equal root
+            // bounds or the display. The image is a preview, never a gesture coordinate map.
+            if (copy == null || !WindowCapturePolicy.isImageSizeAllowed(copy.getWidth(), copy.getHeight())) {
+                finish(op, failure(Status.SCREENSHOT_FAILED, "窗口截图尺寸无效，图像已丢弃"));
                 return;
             }
             ScreenshotFrame frame = new ScreenshotFrame(copy, op.observation,
                     op.startedElapsedRealtimeMs, received, screenshot.getTimestamp());
             copy = null; // ownership moves into frame / callback
-            finish(op, success(frame, "截图仅在内存中；请在使用完毕后 close"));
+            finish(op, success(frame, "TestPad 窗口截图仅在内存中；请在使用完毕后 close"));
         } catch (RuntimeException | OutOfMemoryError exception) {
             finish(op, failure(Status.SCREENSHOT_FAILED, "截图复制失败，图像已释放"));
         } finally {
@@ -823,7 +850,9 @@ public final class XiyanAccessibilityService extends AccessibilityService {
                 && first.rotation == second.rotation && first.widthPx == second.widthPx
                 && first.heightPx == second.heightPx && first.packageName.equals(second.packageName)
                 && first.rootLeft == second.rootLeft && first.rootTop == second.rootTop
-                && first.rootRight == second.rootRight && first.rootBottom == second.rootBottom;
+                && first.rootRight == second.rootRight && first.rootBottom == second.rootBottom
+                && first.windowLeft == second.windowLeft && first.windowTop == second.windowTop
+                && first.windowRight == second.windowRight && first.windowBottom == second.windowBottom;
     }
 
     private static <T> Result<T> success(T value, String message) {

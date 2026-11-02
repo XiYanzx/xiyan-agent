@@ -2,45 +2,59 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${ANDROID_HOME:?Set ANDROID_HOME to an Android SDK containing build-tools 35.0.0}"
-mkdir -p artifacts
-apk=artifacts/xiyan-agent-0.1.0-p0-debug.apk
-cp app/build/outputs/apk/debug/app-debug.apk "$apk"
-"$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" > artifacts/APK-SIGNATURE.txt
-"$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$apk" > artifacts/APK-ALIGNMENT.txt
-python3 - <<'PY'
-import json, os, pathlib, subprocess, xml.etree.ElementTree as ET
-root = pathlib.Path('.')
-summaries = []
-for f in sorted(root.glob('core/build/test-results/test/TEST-*.xml')):
-    r = ET.parse(f).getroot()
-    summaries.append({k:r.attrib.get(k) for k in ['name','tests','failures','errors','skipped','time']})
-if not summaries:
-    raise SystemExit('Missing core JUnit results; run :core:test before packaging')
-if any(int(x.get('failures') or 0) or int(x.get('errors') or 0) for x in summaries):
-    raise SystemExit('JUnit results contain failures')
-report = {
-    'stage': 'P0 technical preview; acceptance pending',
-    'sourceCommit': os.environ.get('XIYAN_SOURCE_COMMIT') or subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
-    'applicationId': 'io.xiyan.agent.p0',
-    'version': '0.1.0-p0',
-    'signature': 'Android debug test certificate; not a production signing identity',
-    'runtimeBundled': False,
-    'accountLoginTested': False,
-    'realInferenceTested': False,
-    'iqooPhysicalDeviceTested': False,
-    'coreUnitTests': summaries,
-    'androidUnitTests': 'No Android unit tests; see core unit tests and separately recorded emulator checks',
-    'longDurationTests': '30/60/120 minutes not performed',
+
+# 所有写入先放在被 Git 忽略的 build 下，与 artifacts 同文件系统，校验失败不覆盖旧包。
+mkdir -p build
+stage=$(mktemp -d "$PWD/build/p0-package.XXXXXXXX")
+backup=""
+cleanup() {
+  if [[ -n "$backup" && -d "$backup" && ! -e artifacts ]]; then
+    mv -T -- "$backup" artifacts
+  fi
+  if [[ -d "$stage" ]]; then rm -rf -- "$stage"; fi
 }
-pathlib.Path('artifacts/BUILD-INFO.json').write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n')
+trap cleanup EXIT
+
+cp app/build/outputs/apk/debug/app-debug.apk "$stage/input.apk"
+"$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$stage/input.apk" > "$stage/APK-SIGNATURE.txt"
+"$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$stage/input.apk" > "$stage/APK-ALIGNMENT.txt"
+python3 tools/verify_p0_package.py --apk "$stage/input.apk" \
+  --report "$stage/BUILD-INFO.json" --evidence-dir "$stage/test-results"
+
+apk_name=$(python3 - "$stage/BUILD-INFO.json" <<'PY'
+import json, sys
+report = json.load(open(sys.argv[1], encoding='utf-8'))
+print('xiyan-agent-' + report['version'] + '-debug.apk')
 PY
-cp LICENSE artifacts/LICENSE.txt
-cp THIRD_PARTY_NOTICES.md artifacts/THIRD_PARTY_NOTICES.md
-cp docs/P0-release-notes.zh-CN.md artifacts/P0-README.zh-CN.md
-python3 - <<'PY'
-import hashlib, pathlib
-directory = pathlib.Path('artifacts')
-lines = [hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name for p in sorted(directory.iterdir())
-         if p.is_file() and p.name != 'SHA256SUMS.txt']
-(directory/'SHA256SUMS.txt').write_text('\n'.join(lines)+'\n')
+)
+mv -- "$stage/input.apk" "$stage/$apk_name"
+cp LICENSE "$stage/LICENSE.txt"
+cp THIRD_PARTY_NOTICES.md "$stage/THIRD_PARTY_NOTICES.md"
+cp docs/P0-release-notes.zh-CN.md "$stage/P0-README.zh-CN.md"
+python3 - "$stage" <<'PY'
+import hashlib, pathlib, shutil, sys, zipfile
+directory = pathlib.Path(sys.argv[1])
+evidence = directory / 'test-results'
+with zipfile.ZipFile(directory / 'VALIDATION-RESULTS.zip', 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+    for path in sorted(evidence.rglob('*')):
+        if path.is_file():
+            archive.write(path, path.relative_to(evidence).as_posix())
+shutil.rmtree(evidence)
+lines = [hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.relative_to(directory).as_posix()
+         for path in sorted(directory.rglob('*')) if path.is_file() and path.name != 'SHA256SUMS.txt']
+(directory / 'SHA256SUMS.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
 PY
+python3 tools/verify_p0_package.py --check-source-only "$stage/BUILD-INFO.json"
+
+if [[ -e artifacts || -L artifacts ]]; then
+  if [[ ! -d artifacts || -L artifacts ]]; then
+    printf '%s\n' '拒绝替换不是普通目录的 artifacts' >&2
+    exit 1
+  fi
+  backup=$(mktemp -d "$PWD/build/p0-artifacts-previous.XXXXXXXX")
+  rmdir "$backup"
+  mv -T -- artifacts "$backup"
+fi
+mv -T -- "$stage" artifacts
+if [[ -n "$backup" && -d "$backup" ]]; then rm -rf -- "$backup"; fi
+printf '%s\n' "已验证并打包 artifacts/$apk_name"

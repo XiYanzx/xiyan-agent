@@ -1,3 +1,58 @@
 plugins {
     id 'com.android.application' version '8.9.2' apply false
 }
+
+// 来源只从本工作树读取，不接受环境变量提供的提交号。
+def gitOutput = { List<String> arguments ->
+    def process = new ProcessBuilder(['git'] + arguments)
+            .directory(rootDir).redirectErrorStream(true).start()
+    def output = process.inputStream.getText('UTF-8').trim()
+    if (process.waitFor() != 0) throw new GradleException("无法读取 Git 来源：${output}")
+    output
+}
+ext.readXiyanGitState = {
+    def commit = gitOutput(['rev-parse', '--verify', 'HEAD'])
+    if (!(commit ==~ /[0-9a-f]{40,64}/)) throw new GradleException('Git HEAD 格式无效')
+    [sourceCommit: commit, sourceTreeClean: gitOutput(['status', '--porcelain=v1', '--untracked-files=all']).isEmpty()]
+}
+ext.xiyanGitState = Collections.unmodifiableMap(readXiyanGitState())
+ext.assertXiyanGitState = {
+    if (readXiyanGitState() != xiyanGitState) {
+        throw new GradleException('构建期间 Git HEAD 或工作树洁净状态已改变，请重新构建')
+    }
+}
+
+// 提交号/clean 是 Test 的输入，提交变化必须重新执行测试，不能给旧 XML 重新盖章。
+allprojects {
+    tasks.withType(org.gradle.api.tasks.testing.Test).configureEach { testTask ->
+        inputs.property('xiyanSourceCommit', rootProject.xiyanGitState.sourceCommit)
+        inputs.property('xiyanSourceTreeClean', rootProject.xiyanGitState.sourceTreeClean)
+        def provenance = layout.buildDirectory.file("test-results/${testTask.name}/xiyan-provenance.json")
+        outputs.file(provenance)
+        doFirst {
+            rootProject.assertXiyanGitState()
+            delete(provenance)
+        }
+        doLast {
+            rootProject.assertXiyanGitState()
+            def xmlDirectory = testTask.reports.junitXml.outputLocation.get().asFile
+            def xmlFiles = fileTree(xmlDirectory) { include 'TEST-*.xml' }.files.sort { it.name }
+            if (xmlFiles.isEmpty()) throw new GradleException("${testTask.path} 没有 JUnit XML，不能生成来源记录")
+            def results = xmlFiles.collect { xmlFile ->
+                def suite = new groovy.xml.XmlSlurper(false, false).parse(xmlFile)
+                def row = [file: xmlFile.name,
+                        sha256: java.security.MessageDigest.getInstance('SHA-256').digest(xmlFile.bytes).encodeHex().toString()]
+                ['tests', 'failures', 'errors', 'skipped'].each { key -> row[key] = (suite.attributes()[key] ?: '0') as int }
+                if (row.failures != 0 || row.errors != 0) throw new GradleException("${testTask.path} 存在失败结果")
+                row
+            }
+            if (results.sum { it.tests - it.skipped } <= 0) throw new GradleException("${testTask.path} 没有实际通过的测试")
+            def record = [schemaVersion: 1, sourceCommit: rootProject.xiyanGitState.sourceCommit,
+                    sourceTreeClean: rootProject.xiyanGitState.sourceTreeClean, testTask: testTask.path,
+                    results: results]
+            def output = provenance.get().asFile
+            output.parentFile.mkdirs()
+            output.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(record)) + '\n', 'UTF-8')
+        }
+    }
+}

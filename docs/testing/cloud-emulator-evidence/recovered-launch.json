@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/workspace/toolchains/android-sdk/platform-tools/adb",
+    "-s",
+    "emulator-5554",
+    "shell",
+    "am",
+    "start",
+    "-W",
+    "-n",
+    "io.xiyan.agent.p0/io.xiyan.agent.MainActivity"
+  ],
+  "started_utc": "2026-11-02T03:23:03.074444+00:00",
+  "finished_utc": "2026-11-02T03:23:05.384590+00:00",
+  "elapsed_seconds": 2.31,
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": "20-retry-launch-after-system-wait.txt",
+  "stderr": "20-retry-launch-after-system-wait.stderr.txt",
+  "platform": "cloud Android emulator; not a physical device"
+}

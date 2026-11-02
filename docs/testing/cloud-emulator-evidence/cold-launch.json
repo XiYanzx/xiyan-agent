@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/workspace/toolchains/android-sdk/platform-tools/adb",
+    "-s",
+    "emulator-5554",
+    "shell",
+    "am",
+    "start",
+    "-W",
+    "-n",
+    "io.xiyan.agent.p0/io.xiyan.agent.MainActivity"
+  ],
+  "started_utc": "2026-11-02T03:21:14.677619+00:00",
+  "finished_utc": "2026-11-02T03:21:43.325051+00:00",
+  "elapsed_seconds": 28.647,
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": "15-final-cold-launch.txt",
+  "stderr": "15-final-cold-launch.stderr.txt",
+  "platform": "cloud Android emulator; not a physical device"
+}

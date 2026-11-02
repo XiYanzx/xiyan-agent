@@ -65,6 +65,7 @@ public final class Diagnostics {
                 report.put("application", "Xiyan Agent");
                 report.put("version", BuildConfig.VERSION_NAME);
                 report.put("sourceCommit", BuildConfig.SOURCE_COMMIT);
+            report.put("sourceTreeClean", BuildConfig.SOURCE_TREE_CLEAN);
                 report.put("stage", "P0 — 未验收");
                 report.put("androidApi", Build.VERSION.SDK_INT);
                 report.put("abis", new JSONArray(Build.SUPPORTED_ABIS));

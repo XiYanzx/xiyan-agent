@@ -61,7 +61,7 @@ public final class MainActivity extends Activity {
         LinearLayout control = Ui.card(this, page, "DEVICE CONTROL", "本机控制验证");
         controlStatus = Ui.text(this, "", 14, Ui.TEXT);
         control.addView(controlStatus);
-        control.addView(Ui.text(this, "无障碍权限由你在系统开启。测试台只验证本应用内的点击、滑动和截图；截图只保留内存，可随时清除。Android 10 截图适配尚未实现。", 13, Ui.MUTED));
+        control.addView(Ui.text(this, "无障碍权限由你在系统开启。测试台只验证本应用内操作；Android 14+ 使用窗口截图，仅保留内存。此 P0 在 Android 10–13 暂不截图。", 13, Ui.MUTED));
         Ui.button(this, control, "打开无障碍设置", false, () -> openSettings());
         Ui.button(this, control, "进入手机控制测试台", false, () -> startActivity(new Intent(this, TestPadActivity.class)));
         Ui.button(this, control, "紧急停止", true, this::emergencyStop);

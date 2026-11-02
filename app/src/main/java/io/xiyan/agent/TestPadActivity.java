@@ -26,6 +26,8 @@ public final class TestPadActivity extends Activity {
     private ScrollView swipePad;
     private ImageView preview;
     private ScreenshotFrame frame;
+    private final CaptureRequestTracker<ScreenshotFrame> captureRequests =
+            new CaptureRequestTracker<>(ScreenshotFrame::close);
     private int tapCount;
     private boolean resumed;
     private long uiGeneration;
@@ -48,10 +50,10 @@ public final class TestPadActivity extends Activity {
 
         LinearLayout observe = Ui.card(this, page, "01 / OBSERVE", "观察与截图");
         Ui.button(this, observe, "读取当前窗口元数据", false, this::observe);
-        Ui.button(this, observe, "抓取本页截图（仅内存）", false, this::capture);
+        Ui.button(this, observe, "抓取测试窗口截图（Android 14+）", false, this::capture);
         Ui.button(this, observe, "清除截图", false, this::clearFrame);
         preview = new ImageView(this);
-        preview.setContentDescription("本次本机截图预览");
+        preview.setContentDescription("本次测试窗口截图预览");
         preview.setAdjustViewBounds(true);
         preview.setMaxHeight(Ui.dp(this, 260));
         observe.addView(preview, new LinearLayout.LayoutParams(-1, -2));
@@ -129,19 +131,29 @@ public final class TestPadActivity extends Activity {
         XiyanAccessibilityService service = service();
         if (service == null) return;
         final long expected = uiGeneration;
+        final long request = captureRequests.begin();
         service.captureScreenshot(response -> {
             if (!resumed || expected != uiGeneration) {
-                if (response.isSuccess()) response.value.close();
+                if (response.isSuccess()) captureRequests.discard(response.value);
                 return;
             }
-            if (!response.isSuccess()) { show("截图", response.message, true); return; }
-            clearFrame();
-            frame = response.value;
-            preview.setImageBitmap(frame.bitmap);
-            show("截图", "本页截图已保留在内存，可点击清除。", true);
+            if (!response.isSuccess()) {
+                if (captureRequests.isCurrent(request)) show("截图", response.message, true);
+                return;
+            }
+            captureRequests.deliver(request, response.value, accepted -> {
+                releaseDisplayedFrame();
+                frame = accepted;
+                preview.setImageBitmap(frame.bitmap);
+                show("截图", "测试窗口截图已保留在内存，可点击清除。", true);
+            });
         });
     }
     private void clearFrame() {
+        captureRequests.cancel();
+        releaseDisplayedFrame();
+    }
+    private void releaseDisplayedFrame() {
         if (preview != null) preview.setImageDrawable(null);
         if (frame != null) { frame.close(); frame = null; }
     }
@@ -203,6 +215,7 @@ public final class TestPadActivity extends Activity {
     private void stop() {
         uiGeneration++;
         handler.removeCallbacksAndMessages(null);
+        clearFrame();
         XiyanAccessibilityService service = XiyanAccessibilityService.getConnectedService();
         if (service != null) service.emergencyStop();
         show("停止", "后续动作授权已撤销；已派发的短手势可能仍在结束。", true);
