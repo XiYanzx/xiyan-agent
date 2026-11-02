@@ -33,7 +33,8 @@ def main():
     downloads.mkdir(parents=True, exist_ok=True)
     manifest = {'schemaVersion': 1, 'upstreamTag': TAG,
                 'upstreamCommit': '6ff1e1ca3b30fc8b914720681fcf5fe62e95f856',
-                'purpose': 'Official Linux musl binaries; experimental Android startup only', 'appServer': {}}
+                'purpose': 'Official Linux musl binaries; experimental Android startup and offline V8 probes',
+                'appServer': {}, 'codeModeHost': {}}
     for abi, (arch, size, expected, machine) in ARTIFACTS.items():
         name = f'codex-app-server-package-{arch}-unknown-linux-musl.tar.gz'
         url = f'https://github.com/openai/codex/releases/download/{TAG}/{name}'
@@ -46,21 +47,26 @@ def main():
             if partial.stat().st_size != size or digest(partial) != expected:
                 raise RuntimeError('Official archive size/SHA256 mismatch: ' + name)
             partial.replace(archive)
-        destination = ROOT / 'runtime-probe/src/main/jniLibs' / abi / 'libcodex_app_server.so'
-        destination.parent.mkdir(parents=True, exist_ok=True)
         with tarfile.open(archive, 'r:gz') as bundle:
-            member = bundle.getmember('bin/codex-app-server')
-            if not member.isfile() or not 0 < member.size < 512 * 1024 * 1024:
-                raise RuntimeError('Unexpected official app-server member')
-            with bundle.extractfile(member) as source, destination.open('wb') as target:
-                shutil.copyfileobj(source, target, 1024 * 1024)
-        with destination.open('rb') as binary:
-            header = binary.read(64)
-            if header[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', header, 18)[0] != machine:
-                raise RuntimeError('Official binary ELF ABI mismatch')
-        manifest['appServer'][abi] = {'sha256': digest(destination), 'bytes': destination.stat().st_size,
-                                      'sourceUrl': url, 'archiveSha256': expected, 'archiveBytes': size}
-        print(json.dumps({'abi': abi, **manifest['appServer'][abi]}), flush=True)
+            for key, member_name, packaged_name in [
+                ('appServer', 'bin/codex-app-server', 'libcodex_app_server.so'),
+                ('codeModeHost', 'bin/codex-code-mode-host', 'libcodex_code_mode_host.so'),
+            ]:
+                destination = ROOT / 'runtime-probe/src/main/jniLibs' / abi / packaged_name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                member = bundle.getmember(member_name)
+                if not member.isfile() or not 0 < member.size < 512 * 1024 * 1024:
+                    raise RuntimeError('Unexpected official executable member: ' + member_name)
+                with bundle.extractfile(member) as source, destination.open('wb') as target:
+                    shutil.copyfileobj(source, target, 1024 * 1024)
+                with destination.open('rb') as binary:
+                    header = binary.read(64)
+                    if header[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', header, 18)[0] != machine:
+                        raise RuntimeError('Official binary ELF ABI mismatch')
+                manifest[key][abi] = {'sha256': digest(destination), 'bytes': destination.stat().st_size,
+                                     'sourceUrl': url, 'archiveMember': member_name,
+                                     'archiveSha256': expected, 'archiveBytes': size}
+                print(json.dumps({'kind': key, 'abi': abi, **manifest[key][abi]}), flush=True)
     asset = ROOT / 'runtime-probe/src/main/assets/runtime-manifest.json'
     asset.parent.mkdir(parents=True, exist_ok=True)
     asset.write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')

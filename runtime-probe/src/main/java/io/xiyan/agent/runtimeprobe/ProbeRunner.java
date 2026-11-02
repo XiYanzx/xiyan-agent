@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.system.Os;
 import android.system.OsConstants;
+import android.system.ErrnoException;
 import android.util.AtomicFile;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -43,8 +44,16 @@ final class ProbeRunner {
     ProbeRunner(Context context) { this.context = context; }
 
     synchronized void start(Listener listener) {
+        start(listener, false);
+    }
+
+    synchronized void startMcp(Listener listener) {
+        start(listener, true);
+    }
+
+    private synchronized void start(Listener listener, boolean mcp) {
         if (closed || active != null) return;
-        Run run = new Run();
+        Run run = new Run(mcp);
         active = run;
         worker.execute(() -> execute(run, listener));
     }
@@ -62,7 +71,15 @@ final class ProbeRunner {
     }
 
     String readLastReport() {
-        try (InputStream input = new AtomicFile(new File(context.getFilesDir(), "runtime-probe-last.json")).openRead()) {
+        return readReport("runtime-probe-last.json");
+    }
+
+    String readLastMcpReport() {
+        return readReport("mcp-probe-last.json");
+    }
+
+    private String readReport(String name) {
+        try (InputStream input = new AtomicFile(new File(context.getFilesDir(), name)).openRead()) {
             return new String(readBounded(input, 524288), StandardCharsets.UTF_8);
         } catch (Exception ignored) { return null; }
     }
@@ -74,6 +91,8 @@ final class ProbeRunner {
         Collector stderr = null;
         ScheduledFuture<?> deadline = null;
         boolean initialized = false;
+        boolean mcpCatalogVerified = false;
+        File directory = null;
         String failure = null;
         try {
             report.put("schemaVersion", 1);
@@ -85,10 +104,13 @@ final class ProbeRunner {
             report.put("androidApi", Build.VERSION.SDK_INT);
             report.put("deviceAbis", new JSONArray(Build.SUPPORTED_ABIS));
             report.put("pageSize", Os.sysconf(OsConstants._SC_PAGESIZE));
-            report.put("scope", "Native app-server startup and initialize only");
+            report.put("scope", run.mcp ? "Offline threadless MCP tool catalog discovery only" : "Native app-server startup and initialize only");
             report.put("accountLoginTested", false);
             report.put("inferenceTested", false);
-            report.put("v8OrHelpersTested", false);
+            report.put("v8Tested", false);
+            report.put("codexNativeHelpersTested", false);
+            report.put("mcpFixtureTested", run.mcp);
+            report.put("mcpToolCallTested", false);
             report.put("startupDeadlineMillis", STARTUP_MS);
             report.put("responseDeadlineMillis", RESPONSE_MS);
             deadline = timers.schedule(() -> run.stop("startup_timeout"), STARTUP_MS, TimeUnit.MILLISECONDS);
@@ -116,11 +138,12 @@ final class ProbeRunner {
             if (!expected.equals(actual)) throw new IOException("Installed native SHA256 mismatch");
             report.put("nativeSha256Verified", true);
             run.check();
-            File directory = new File(context.getNoBackupFilesDir(), "runtime-probe/" + UUID.randomUUID());
+            directory = new File(context.getNoBackupFilesDir(), "runtime-probe/" + UUID.randomUUID());
             File home = new File(directory, "home");
             File codexHome = new File(directory, "codex");
             File temporary = new File(directory, "tmp");
             if (!home.mkdirs() || !codexHome.mkdirs() || !temporary.mkdirs()) throw new IOException("Private run directory creation failed");
+            if (run.mcp) writeMcpConfig(codexHome, directory);
             ProcessBuilder builder = new ProcessBuilder(binary.getAbsolutePath(), "--listen", "stdio://");
             builder.directory(directory);
             Map<String, String> environment = builder.environment();
@@ -169,6 +192,26 @@ final class ProbeRunner {
                 break;
             }
             if (!initialized) throw new IOException("Initialize response deadline exceeded");
+            if (run.mcp) {
+                writeLine(process.getOutputStream(), new JSONObject().put("id", 2).put("method", "mcpServerStatus/list")
+                        .put("params", new JSONObject().put("serverName", "xiyan_probe").put("detail", "toolsAndAuthOnly")));
+                JSONObject response = awaitResponse(stdout, run, 2, SystemClock.elapsedRealtime() + RESPONSE_MS);
+                report.put("mcpCatalogResponse", response);
+                if (response.has("error")) throw new IOException("MCP catalog RPC returned an error");
+                JSONArray servers = response.getJSONObject("result").getJSONArray("data");
+                if (servers.length() != 1) throw new IOException("Unexpected MCP server count");
+                JSONObject server = servers.getJSONObject(0);
+                if (!"xiyan_probe".equals(server.getString("name")) || !server.isNull("toolsError")) {
+                    throw new IOException("MCP fixture discovery failed");
+                }
+                JSONObject tools = server.getJSONObject("tools");
+                JSONObject tool = tools.getJSONObject("xiyan_echo");
+                if (tools.length() != 1 || !"xiyan_echo".equals(tool.getString("name"))
+                        || !"xiyan-offline-fixture".equals(server.getJSONObject("serverInfo").getString("name"))) {
+                    throw new IOException("Unexpected MCP fixture catalog");
+                }
+                mcpCatalogVerified = true;
+            }
         } catch (Exception problem) {
             failure = problem.getClass().getSimpleName() + ": " + problem.getMessage();
         } finally {
@@ -178,17 +221,39 @@ final class ProbeRunner {
             if (stderr != null) stderr.finish();
             try {
                 report.put("initializeCompleted", initialized);
+                if (run.mcp) {
+                    report.put("mcpCatalogVerified", mcpCatalogVerified);
+                    JSONObject fixture;
+                    try { fixture = verifyFixtureStopped(directory); }
+                    catch (Exception error) { fixture = new JSONObject().put("verified", false)
+                            .put("error", error.getClass().getSimpleName() + ": " + error.getMessage()); }
+                    report.put("mcpFixtureCleanup", fixture);
+                    if (!fixture.optBoolean("verified")) failure = failure == null ? "MCP fixture cleanup unverified" : failure;
+                }
                 report.put("stopReason", run.reason == null ? JSONObject.NULL : run.reason);
                 report.put("failure", failure == null ? JSONObject.NULL : failure);
                 report.put("cleanup", cleanup);
                 report.put("stdout", stdout == null ? "" : stdout.snapshot());
                 report.put("stderr", stderr == null ? "" : stderr.snapshot());
                 report.put("elapsedMillis", SystemClock.elapsedRealtime() - started);
-                boolean passed = initialized && failure == null && run.reason == null && cleanup.optBoolean("verified");
-                report.put("status", passed ? "native_initialize_passed" : "native_initialize_not_passed");
-                report.put("summaryZh", passed ? "当前设备原生 initialize 完成；不代表 V8、登录、推理或其他 ABI 通过。" : "原生初始化探针未通过；请检查 failure、stopReason 与 stderr。");
+                Integer exitCode = cleanup.has("processExitCode") && !cleanup.isNull("processExitCode")
+                        ? cleanup.getInt("processExitCode") : null;
+                String status = classifyOutcome(initialized, failure != null, run.reason != null,
+                        cleanup.optBoolean("verified"), exitCode,
+                        cleanup.optBoolean("exitedBeforeShutdown"), cleanup.optBoolean("destroyRequested")
+                                || cleanup.optBoolean("forcedStopRequested"));
+                if (run.mcp) status = mcpCatalogVerified && "native_initialize_passed".equals(status)
+                        ? "offline_mcp_catalog_passed" : "offline_mcp_catalog_not_passed";
+                report.put("status", status);
+                report.put("summaryZh", run.mcp
+                        ? ("offline_mcp_catalog_passed".equals(status) ? "离线 MCP 工具目录已通过；未调用工具、模型或账号。" : "离线 MCP 工具目录未通过；请检查证据。")
+                        : "native_initialize_passed".equals(status)
+                        ? "当前设备原生 initialize 完成；不代表 V8、登录、推理或其他 ABI 通过。"
+                        : "native_initialize_shutdown_uncertain".equals(status)
+                        ? "initialize 已完成，但关闭输入后出现非零退出，退出原因未能确定；未标为通过。"
+                        : "原生初始化探针未通过；请检查 failure、stopReason、cleanup 与 stderr。");
                 String text = report.toString(2);
-                AtomicFile file = new AtomicFile(new File(context.getFilesDir(), "runtime-probe-last.json"));
+                AtomicFile file = new AtomicFile(new File(context.getFilesDir(), run.mcp ? "mcp-probe-last.json" : "runtime-probe-last.json"));
                 FileOutputStream output = null;
                 try {
                     output = file.startWrite();
@@ -206,6 +271,86 @@ final class ProbeRunner {
                 listener.complete("{\"status\":\"evidence_generation_failed\"}");
             }
         }
+    }
+
+    private void writeMcpConfig(File codexHome, File directory) throws Exception {
+        StringBuilder config = new StringBuilder("[mcp_servers.xiyan_probe]\ncommand = \"/system/bin/app_process\"\n")
+                .append("args = [\"/system/bin\", \"io.xiyan.agent.runtimeprobe.LocalMcpFixture\"]\n")
+                .append("startup_timeout_sec = 5\ntool_timeout_sec = 5\n[mcp_servers.xiyan_probe.env]\n")
+                .append("CLASSPATH = ").append(tomlPath(context.getApplicationInfo().sourceDir)).append('\n')
+                .append("ANDROID_ROOT = \"/system\"\nANDROID_DATA = \"/data\"\n")
+                .append("XIYAN_MCP_PROBE_DIR = ").append(tomlPath(directory.getAbsolutePath())).append('\n');
+        for (String name : new String[] {"BOOTCLASSPATH", "DEX2OATBOOTCLASSPATH", "ANDROID_ART_ROOT", "ANDROID_I18N_ROOT", "ANDROID_TZDATA_ROOT", "ANDROID_RUNTIME_ROOT"}) {
+            String value = System.getenv(name);
+            if (value != null && !value.isEmpty()) config.append(name).append(" = ").append(tomlPath(value)).append('\n');
+        }
+        try (FileOutputStream output = new FileOutputStream(new File(codexHome, "config.toml"))) {
+            output.write(config.toString().getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private static String tomlPath(String value) throws IOException {
+        if (!value.matches("[/A-Za-z0-9_~+=.:-]+")) throw new IOException("Unexpected character in installed Android path");
+        return "\"" + value + "\"";
+    }
+
+    private static JSONObject awaitResponse(Collector stdout, Run run, int id, long end) throws Exception {
+        while (SystemClock.elapsedRealtime() < end) {
+            run.check();
+            String line = stdout.lines.poll(100, TimeUnit.MILLISECONDS);
+            if (line == null) {
+                if (stdout.done) throw new IOException("stdout ended before RPC response");
+                continue;
+            }
+            JSONObject message = new JSONObject(line);
+            if (String.valueOf(id).equals(String.valueOf(message.opt("id")))) return message;
+        }
+        throw new IOException("RPC response deadline exceeded");
+    }
+
+    private static JSONObject verifyFixtureStopped(File directory) throws Exception {
+        JSONObject result = new JSONObject();
+        File pids = directory == null ? null : new File(directory, "mcp-fixture-pids.txt");
+        if (pids == null || !pids.isFile()) return result.put("verified", false).put("reason", "fixture_pid_not_recorded");
+        String text;
+        try (InputStream input = new FileInputStream(pids)) { text = new String(readBounded(input, 1024), StandardCharsets.UTF_8); }
+        JSONArray records = new JSONArray();
+        boolean verified = true;
+        for (String line : text.trim().split("\\s+")) {
+            int pid = Integer.parseInt(line);
+            if (pid <= 0) throw new IOException("Invalid fixture PID");
+            boolean stopped = false;
+            for (int attempt = 0; attempt < 6; attempt++) {
+                try { Os.kill(pid, 0); }
+                catch (ErrnoException error) { if (error.errno == OsConstants.ESRCH) stopped = true; else throw error; }
+                if (stopped) break;
+                Thread.sleep(50);
+            }
+            records.put(new JSONObject().put("pid", pid).put("stopped", stopped));
+            verified &= stopped;
+        }
+        File events = new File(directory, "mcp-fixture-events.txt");
+        if (events.isFile()) try (InputStream input = new FileInputStream(events)) {
+            result.put("events", new String(readBounded(input, 4096), StandardCharsets.UTF_8));
+        }
+        return result.put("verified", verified).put("processes", records);
+    }
+
+    /** Classifies observations, without attributing an exit to a signal we cannot observe. */
+    static String classifyOutcome(boolean initialized, boolean failed, boolean stopped,
+            boolean cleanupVerified, Integer exitCode, boolean exitedBeforeShutdown,
+            boolean terminationRequested) {
+        if (!initialized || failed || stopped || !cleanupVerified || exitCode == null) {
+            return "native_initialize_not_passed";
+        }
+        if (exitCode == 0) return "native_initialize_passed";
+        if (exitedBeforeShutdown) return "native_initialize_not_passed";
+        // A nonzero code after our destroy/force request is not evidence of a
+        // native startup failure. The probe's scope is the completed handshake.
+        if (terminationRequested) return "native_initialize_passed";
+        // Process can exit between isAlive() and closing stdin. We cannot tell
+        // a concurrent crash from shutdown on EOF, so do not claim a pass.
+        return "native_initialize_shutdown_uncertain";
     }
 
     private static void writeLine(OutputStream output, JSONObject json) throws IOException {
@@ -249,9 +394,11 @@ final class ProbeRunner {
     }
 
     private static final class Run {
+        final boolean mcp;
         private volatile Process process;
         volatile String reason;
         private boolean forcedStopRequested;
+        Run(boolean mcp) { this.mcp = mcp; }
         synchronized void publish(Process child) {
             process = child;
             if (reason != null) { forcedStopRequested = true; child.destroyForcibly(); }
@@ -265,6 +412,10 @@ final class ProbeRunner {
             JSONObject result = new JSONObject();
             try {
                 if (process == null) return result.put("verified", true).put("processStarted", false);
+                boolean exitedBeforeShutdown = !process.isAlive();
+                result.put("exitedBeforeShutdown", exitedBeforeShutdown);
+                if (exitedBeforeShutdown) result.put("exitCodeBeforeShutdown", process.exitValue());
+                result.put("stdinCloseRequested", true);
                 try { process.getOutputStream().close(); } catch (IOException ignored) { }
                 boolean destroyRequested = false;
                 if (!process.waitFor(500, TimeUnit.MILLISECONDS)) {

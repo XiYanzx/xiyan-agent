@@ -1,5 +1,7 @@
 plugins { id 'com.android.application' }
 
+dependencies { testImplementation 'junit:junit:4.13.2' }
+
 android {
     namespace 'io.xiyan.agent.runtimeprobe'
     compileSdk 35
@@ -21,7 +23,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            keepDebugSymbols += ['**/libcodex_app_server.so']
+            keepDebugSymbols += ['**/libcodex_app_server.so', '**/libcodex_code_mode_host.so']
         }
     }
     lint { abortOnError true; warningsAsErrors true }
