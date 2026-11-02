@@ -98,12 +98,12 @@ public final class ShizukuControlActivity extends Activity {
         if(state==null)return;ShizukuController.Snapshot s=controller.snapshot();state.setText(ShizukuUi.status(s));
         String pending=getString(R.string.shizuku_pending);
         detail.setText(getString(R.string.shizuku_connection_detail,s.mode==ShizukuController.Mode.UNKNOWN?pending:s.mode,s.uid<0?pending:String.format(java.util.Locale.ROOT,"%d",s.uid),s.serverVersion<0?pending:String.format(java.util.Locale.ROOT,"%d",s.serverVersion)));
-        Ui.enabled(request,s.binderAlive&&!s.permissionGranted);Ui.enabled(connect,s.binderAlive&&s.permissionGranted&&!s.binding&&!s.bound);
+        Ui.enabled(request,s.binderAlive&&!s.permissionGranted);Ui.enabled(connect,s.binderAlive&&s.permissionGranted&&!s.binding&&!s.bound&&!s.busy);
         manager.setVisibility(s.binderAlive?View.GONE:View.VISIBLE);
         request.setVisibility(s.binderAlive&&!s.permissionGranted?View.VISIBLE:View.GONE);connect.setVisibility(s.permissionGranted&&!s.bound?View.VISIBLE:View.GONE);
         disconnect.setVisibility(s.bound?View.VISIBLE:View.GONE);verifyEntry.setVisibility(s.bound?View.VISIBLE:View.GONE);
         stop.setVisibility(s.busy?View.VISIBLE:View.GONE);Ui.enabled(verifyEntry,s.bound&&!s.busy);
-        guidance.setText(!s.binderAlive?"先在 Shizuku 管理器启动，再回到这里授权 Xiyan。":!s.permissionGranted?"Shizuku 已启动，请授权 Xiyan 使用本机操作通道。":!s.bound?"已取得授权。连接本机操控服务后，可进入单步验证。":"通道已连接，可进入单步验证核对操作结果。");
+        guidance.setText(s.busy?"正在处理已派发输入，请稍候再连接或开始下一次操作。":!s.binderAlive?"先在 Shizuku 管理器启动，再回到这里授权 Xiyan。":!s.permissionGranted?"Shizuku 已启动，请授权 Xiyan 使用本机操作通道。":!s.bound?"已取得授权。连接本机操控服务后，可进入单步验证。":"通道已连接，可进入单步验证核对操作结果。");
         boolean ready=resumed&&s.bound&&!s.busy;for(Button button:new Button[]{tap,swipe,back,home})Ui.enabled(button,ready);
     }
 }
