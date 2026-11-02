@@ -2,6 +2,8 @@
 
 2026-11-02 UTC。按最新授权转为本地 Windows 构建与测试；以下 Cloud 记录保留历史范围。开发按 GPT-6.1 Sol / Ultra 执行。**P0 尚未通过验收，P1–P6 未开始验收；当前 APK 是本机技术验证工具，尚无自主 Agent 能力。**
 
+最新的本地源码、APK、35 项测试、Android15 模拟器和公开 Release 结果见 [Windows 本地复验](testing/local-windows-2026-11-02.md)。[本地运行时预检](runtime/LOCAL-WINDOWS-SPIKE.zh-CN.md)单列 NDK smoke 与 Windows/V8 主机构建前置，不沿用 Cloud 网络故障作为本机阻碍。
+
 ## 已有源码与构建证据
 
 - 独立 Android 原生 Java 工程，min29 / target35，Java17 源码；P0 包名 `io.xiyan.agent.p0`，调试测试签名。

@@ -13,6 +13,7 @@ P0 验证工具提供中文深色界面、权限状态、真实设备信息、�
 | [完整任务书](docs/REQUIREMENTS.zh-CN.md) | 用户要求及 P0–P6 验收 |
 | [P0 研究报告](docs/P0-feasibility.md) | 官方账号、模型、运行时与手机控制路线 |
 | [P0 开发状态](docs/P0-STATUS.zh-CN.md) | 已实现项、构建证据和未过门槛 |
+| [Windows 本地复验](docs/testing/local-windows-2026-11-02.md) | 本地 APK、35 项测试、模拟器与公开下载核对 |
 | [运行时实测](docs/runtime/P0-RUNTIME-SPIKE.zh-CN.md) | 实际命令、退出码、阻碍与原始证据 |
 | [架构](docs/architecture-p0.zh-CN.md) | 当前模块及实现边界 |
 | [模型兼容](docs/model-compatibility.zh-CN.md) | 动态目录解析与未接入项 |
