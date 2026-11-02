@@ -1,0 +1,73 @@
+{
+  "stage": "P0 technical preview; acceptance pending",
+  "sourceCommit": "a2ac08dafdd33ca2dd8d408e10a78b89472cec74",
+  "sourceTreeClean": true,
+  "applicationId": "io.xiyan.agent.p0",
+  "version": "0.1.0-p0",
+  "versionCode": 1,
+  "buildType": "debug",
+  "apkSha256": "827d1bd801d1c6de5681671ef30cc6a47908196c0310afe13709ca373091bdd2",
+  "embeddedBuild": {
+    "schemaVersion": 1,
+    "sourceCommit": "a2ac08dafdd33ca2dd8d408e10a78b89472cec74",
+    "sourceTreeClean": true,
+    "applicationId": "io.xiyan.agent.p0",
+    "versionCode": 1,
+    "versionName": "0.1.0-p0",
+    "buildType": "debug"
+  },
+  "manifest": {
+    "versionCode": 1,
+    "versionName": "0.1.0-p0",
+    "package": "io.xiyan.agent.p0"
+  },
+  "sourceVerification": "Git clean HEAD, embedded asset, actual DEX BuildConfig, and hash-bound JUnit provenance agree; not a tamper-proof build attestation",
+  "signature": "See APK-SIGNATURE.txt for verified certificate details; this is not production signing acceptance",
+  "coreUnitTests": [
+    {
+      "name": "io.xiyan.agent.core.action.ActionGateTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "e1fe3db263120f0e732864b5b4544a0b17b338862add2075a1bf3310a495e901"
+    },
+    {
+      "name": "io.xiyan.agent.core.model.ModelCatalogTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f54aff46c1f6f2a12063dd3eab5d72ac46cdd75a3ec429b6129ccbc451181e6a"
+    }
+  ],
+  "androidUnitTests": [
+    {
+      "name": "io.xiyan.agent.CaptureRequestTrackerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "78dffd8c286a1ae286bfc38156c44d5553c6745d8b84d123f394a27558cac338"
+    },
+    {
+      "name": "io.xiyan.agent.control.WindowCapturePolicyTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "424d254e7a1a7db5353edde11dc0e090bb4a047e10a5b4a0a7ac4a5038db8a29"
+    }
+  ],
+  "androidUnitTestsKind": "Local JVM unit tests, not Android device or instrumentation tests",
+  "unitTestTotals": {
+    "tests": 35,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "accountLoginTested": false,
+  "realInferenceTested": false,
+  "iqooPhysicalDeviceTested": false,
+  "longDurationTests": "30/60/120 minutes not performed"
+}

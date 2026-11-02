@@ -1,0 +1,37 @@
+{
+  "sourceCommit": "a2ac08dafdd33ca2dd8d408e10a78b89472cec74",
+  "apkSha256": "827d1bd801d1c6de5681671ef30cc6a47908196c0310afe13709ca373091bdd2",
+  "cases": [
+    {
+      "name": "mismatched-app-test-commit",
+      "exitCode": 1,
+      "expectedRejection": true,
+      "artifactsUnchanged": true,
+      "stderr": "P0 来源校验失败：app JUnit provenance 提交号不匹配"
+    },
+    {
+      "name": "altered-core-junit-xml",
+      "exitCode": 1,
+      "expectedRejection": true,
+      "artifactsUnchanged": true,
+      "stderr": "P0 来源校验失败：JUnit XML 已改变：core/TEST-io.xiyan.agent.core.action.ActionGateTest.xml"
+    },
+    {
+      "name": "dirty-source-tree",
+      "exitCode": 1,
+      "expectedRejection": true,
+      "artifactsUnchanged": true,
+      "stderr": "P0 来源校验失败：工作树有未提交修改或未跟踪文件，正式打包必须来自 clean commit"
+    },
+    {
+      "name": "old-apk-missing-provenance",
+      "exitCode": 1,
+      "expectedRejection": true,
+      "artifactsUnchanged": true,
+      "stderr": "P0 来源校验失败：APK 缺少 assets/xiyan-build.json，请重新构建"
+    }
+  ],
+  "restoredPositiveVerificationExitCode": 0,
+  "finalArtifactsUnchanged": true,
+  "executedAtEpoch": 1793591348.196026
+}

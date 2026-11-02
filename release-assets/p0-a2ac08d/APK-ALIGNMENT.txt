@@ -1,0 +1,16 @@
+Verifying alignment of /workspace/xiyan-agent/build/p0-package.PS5ruLSR/input.apk (4)...
+      87 META-INF/com/android/build/gradle/app-metadata.properties (OK - compressed)
+     180 classes.dex (OK)
+   18672 classes2.dex (OK)
+  108716 res/drawable/ic_launcher.xml (OK - compressed)
+   33780 classes3.dex (OK)
+   72785 AndroidManifest.xml (OK - compressed)
+   74796 res/xml/accessibility_service.xml (OK - compressed)
+   75190 res/xml/data_extraction_rules.xml (OK - compressed)
+  109136 classes4.dex (OK)
+   35985 res/xml-v31/accessibility_service.xml (OK - compressed)
+   36404 res/xml-v34/accessibility_service.xml (OK - compressed)
+   36824 resources.arsc (OK)
+  149436 classes5.dex (OK)
+   38901 assets/xiyan-build.json (OK - compressed)
+Verification succesful
