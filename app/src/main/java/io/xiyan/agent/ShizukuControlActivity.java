@@ -25,18 +25,18 @@ public final class ShizukuControlActivity extends Activity {
     private Button request,connect,tap,swipe,back,home,target,verifyEntry,stop,manager,disconnect;
     private ScrollView swipeTarget;
     private int clicks,viewGeneration;
-    private boolean resumed;
+    private boolean resumed,verificationMode;
     private final Runnable observer=()->runOnUiThread(this::refresh);
 
     @Override public void onCreate(Bundle saved){
         Ui.applyTheme(this);super.onCreate(saved);controller=ShizukuController.getInstance(this);
         LinearLayout page=Ui.page(this);LinearLayout top=Ui.row(this);
         top.addView(Ui.iconButton(this,AgentIconView.Icon.BACK,"返回设置",Ui.colors(this).text,this::finish),new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
-        boolean verificationMode=getIntent().getBooleanExtra("verification",false);
+        verificationMode=getIntent().getBooleanExtra("verification",false);
         top.addView(Ui.heading(this,verificationMode?"单步验证":"手机操控",20));page.addView(top);
         Ui.gap(this,page,20);Ui.editorial(this,page,"05 / SHIZUKU",verificationMode?"核对每次操作。":"让手机响应。");
         state=Ui.heading(this,"",20);page.addView(state);detail=Ui.text(this,"",13,Ui.MUTED);page.addView(detail);
-        Ui.gap(this,page,12);guidance=Ui.text(this,"",14,Ui.TEXT);page.addView(guidance);
+        Ui.gap(this,page,12);guidance=Ui.text(this,"",14,Ui.TEXT);guidance.setMinLines(2);page.addView(guidance);
         LinearLayout setup=Ui.column(this);page.addView(setup);setup.setVisibility(verificationMode?View.GONE:View.VISIBLE);
         manager=Ui.action(this,"打开 Shizuku",true,false,()->{
             Intent launch=getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
@@ -102,7 +102,8 @@ public final class ShizukuControlActivity extends Activity {
         manager.setVisibility(s.binderAlive?View.GONE:View.VISIBLE);
         request.setVisibility(s.binderAlive&&!s.permissionGranted?View.VISIBLE:View.GONE);connect.setVisibility(s.permissionGranted&&!s.bound?View.VISIBLE:View.GONE);
         disconnect.setVisibility(s.bound?View.VISIBLE:View.GONE);verifyEntry.setVisibility(s.bound?View.VISIBLE:View.GONE);
-        stop.setVisibility(s.busy?View.VISIBLE:View.GONE);Ui.enabled(verifyEntry,s.bound&&!s.busy);
+        // Keep the verification target fixed when dispatch publishes its busy state.
+        stop.setVisibility(verificationMode||s.busy?View.VISIBLE:View.GONE);Ui.enabled(stop,s.busy);Ui.enabled(verifyEntry,s.bound&&!s.busy);
         guidance.setText(s.busy?"正在处理已派发输入，请稍候再连接或开始下一次操作。":!s.binderAlive?"先在 Shizuku 管理器启动，再回到这里授权 Xiyan。":!s.permissionGranted?"Shizuku 已启动，请授权 Xiyan 使用本机操作通道。":!s.bound?"已取得授权。连接本机操控服务后，可进入单步验证。":"通道已连接，可进入单步验证核对操作结果。");
         boolean ready=resumed&&s.bound&&!s.busy;for(Button button:new Button[]{tap,swipe,back,home})Ui.enabled(button,ready);
     }
