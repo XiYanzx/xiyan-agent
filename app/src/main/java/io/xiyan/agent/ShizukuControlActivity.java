@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -53,7 +54,15 @@ public final class ShizukuControlActivity extends Activity {
         target.setContentDescription("Shizuku 点击验证目标");verification.addView(target,new LinearLayout.LayoutParams(-1,Ui.dp(this,88)));
         tap=Ui.button(this,verification,"通过 Shizuku 验证点击",false,this::verifyTap);
         Ui.section(this,verification,"02 / 验证滑动");
-        swipeTarget=new ScrollView(this);swipeTarget.setContentDescription("Shizuku 滑动验证区域");
+        swipeTarget=new ScrollView(this){
+            @Override public boolean dispatchTouchEvent(MotionEvent event){
+                // Keep a gesture that starts in the target inside this nested scroll area.
+                if(event.getActionMasked()==MotionEvent.ACTION_DOWN)getParent().requestDisallowInterceptTouchEvent(true);
+                boolean handled=super.dispatchTouchEvent(event);
+                if(event.getActionMasked()==MotionEvent.ACTION_UP||event.getActionMasked()==MotionEvent.ACTION_CANCEL)getParent().requestDisallowInterceptTouchEvent(false);
+                return handled;
+            }
+        };swipeTarget.setContentDescription("Shizuku 滑动验证区域");
         LinearLayout strips=Ui.column(this);for(int i=1;i<=10;i++){TextView row=Ui.text(this,"测试行 "+i,15,Ui.TEXT);row.setGravity(Gravity.CENTER);row.setBackgroundColor(i%2==0?Ui.colors(this).raised:Ui.colors(this).surface);strips.addView(row,new LinearLayout.LayoutParams(-1,Ui.dp(this,48)));}
         swipeTarget.addView(strips);verification.addView(swipeTarget,new LinearLayout.LayoutParams(-1,Ui.dp(this,160)));
         swipe=Ui.button(this,verification,"通过 Shizuku 验证上滑",false,this::verifySwipe);
