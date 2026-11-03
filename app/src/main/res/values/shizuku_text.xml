@@ -1,0 +1,5 @@
+<resources>
+    <string name="shizuku_click_count">点击计数 %1$d</string>
+    <string name="shizuku_connection_detail">运行方式 %1$s · UID %2$s · 服务协议 %3$s</string>
+    <string name="shizuku_pending">待获取</string>
+</resources>

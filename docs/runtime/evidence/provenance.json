@@ -1,0 +1,34 @@
+{
+  "recorded_utc": "2026-11-02T03:14:16.237748+00:00",
+  "host": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "host_machine": "x86_64",
+  "host_page_size": 4096,
+  "source_git_status": "",
+  "files": [
+    {
+      "path": "/workspace/runtime-spike/codex/codex-rs/Cargo.lock",
+      "bytes": 409262,
+      "sha256": "22bd51f50864ce40f6686f3350c0547fdd50a8213240f54435ed394f68bf08e6"
+    },
+    {
+      "path": "/workspace/runtime-spike/android-smoke",
+      "bytes": 6128,
+      "sha256": "d3af27b065f31ea82daf5124a1099a57e69f1df312297d0706beba78429bb276"
+    },
+    {
+      "path": "/workspace/runtime-spike/android-ndk-r28c-linux.zip",
+      "bytes": 722261334,
+      "sha256": "dfb20d396df28ca02a8c708314b814a4d961dc9074f9a161932746f815aa552f"
+    },
+    {
+      "path": "/workspace/runtime-spike/rustup-init",
+      "bytes": 21139856,
+      "sha256": "5be191e8c70a5007074254cb74d78dbfdd25cd5a61c27de7b8e5410122ec24f4"
+    }
+  ],
+  "checks": {
+    "bash_syntax": "passed",
+    "python_ast_parse": "passed"
+  },
+  "device_or_emulator_run": false
+}

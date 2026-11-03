@@ -1,0 +1,52 @@
+[
+  {
+    "argv": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "cwd": "/workspace/runtime-spike/codex",
+    "exit_code": 0,
+    "output": "6ff1e1ca3b30fc8b914720681fcf5fe62e95f856\n"
+  },
+  {
+    "argv": [
+      "git",
+      "rev-parse",
+      "rust-v0.166.0^{}"
+    ],
+    "cwd": "/workspace/runtime-spike/codex",
+    "exit_code": 0,
+    "output": "6ff1e1ca3b30fc8b914720681fcf5fe62e95f856\n"
+  },
+  {
+    "argv": [
+      "git",
+      "status",
+      "--porcelain"
+    ],
+    "cwd": "/workspace/runtime-spike/codex",
+    "exit_code": 0,
+    "output": ""
+  },
+  {
+    "argv": [
+      "git",
+      "show",
+      "HEAD:.github/workflows/rust-release.yml"
+    ],
+    "cwd": "/workspace/runtime-spike/codex",
+    "exit_code": 0,
+    "output": "85:       fail-fast: false\n86:       matrix:\n87:         build-system: [cargo, bazel]\n88:         target:\n89:           - aarch64-apple-darwin\n90:           - x86_64-apple-darwin\n91:           - x86_64-unknown-linux-musl\n92:           - aarch64-unknown-linux-musl\n93:         bundle: [primary, app-server]\n94:         include:\n95:           - runner: macos-15-xlarge\n96:             target: aarch64-apple-darwin\n97:             bundle: primary\n98:             artifact_name: aarch64-apple-darwin\n99:             binaries: \"codex codex-code-mode-host codex-exec-server codex-responses-api-proxy\"\n100:             build_dmg: \"true\"\n101:           - runner: macos-15-xlarge\n102:             target: aarch64-apple-darwin\n103:             bundle: app-server\n104:             artifact_name: aarch64-apple-darwin-app-server\n105:             binaries: \"codex-app-server codex-code-mode-host codex-exec-server\"\n106:             build_dmg: \"false\"\n107:           - runner: macos-15-xlarge\n108:             target: x86_64-apple-darwin\n109:             bundle: primary\n110:             artifact_name: x86_64-apple-darwin\n111:             binaries: \"codex codex-code-mode-host codex-exec-server codex-responses-api-proxy\"\n112:             build_dmg: \"true\"\n113:           - runner: macos-15-xlarge\n114:             target: x86_64-apple-darwin\n115:             bundle: app-server\n116:             artifact_name: x86_64-apple-darwin-app-server\n117:             binaries: \"codex-app-server codex-code-mode-host codex-exec-server\"\n118:             build_dmg: \"false\"\n119:           # Release artifacts intentionally ship MUSL-linked Linux binaries.\n120:           - runner: ${{ github.event.repository.name }}-linux-x64-xl\n121:             target: x86_64-unknown-linux-musl\n122:             bundle: primary\n123:             artifact_name: x86_64-unknown-linux-musl\n124:             binaries: \"codex codex-code-mode-host codex-exec-server codex-responses-api-proxy bwrap\"\n125:             build_dmg: \"false\"\n126:           - runner: ${{ github.event.repository.name }}-linux-x64-xl\n127:             target: x86_64-unknown-linux-musl\n128:             bundle: app-server\n129:             artifact_name: x86_64-unknown-linux-musl-app-server\n130:             binaries: \"codex-app-server codex-code-mode-host codex-exec-server\"\n131:             build_dmg: \"false\"\n132:           - runner: ${{ github.event.repository.name }}-linux-arm64\n133:             target: aarch64-unknown-linux-musl\n134:             bundle: primary\n135:             artifact_name: aarch64-unknown-linux-musl\n136:             binaries: \"codex codex-code-mode-host codex-exec-server codex-responses-api-proxy bwrap\"\n137:             build_dmg: \"false\"\n138:           - runner: ${{ github.event.repository.name }}-linux-arm64\n139:             target: aarch64-unknown-linux-musl\n140:             bundle: app-server\n141:             artifact_name: aarch64-unknown-linux-musl-app-server\n142:             binaries: \"codex-app-server codex-code-mode-host codex-exec-server\"\n143:             build_dmg: \"false\"\n144: \n145:     steps:\n"
+  },
+  {
+    "argv": [
+      "git",
+      "show",
+      "HEAD:codex-rs/sandboxing/src/manager.rs"
+    ],
+    "cwd": "/workspace/runtime-spike/codex",
+    "exit_code": 0,
+    "output": "50: pub fn get_platform_sandbox(windows_sandbox_enabled: bool) -> Option<SandboxType> {\n51:     if cfg!(target_os = \"macos\") {\n52:         Some(SandboxType::MacosSeatbelt)\n53:     } else if cfg!(target_os = \"linux\") {\n54:         Some(SandboxType::LinuxSeccomp)\n55:     } else if cfg!(target_os = \"windows\") {\n56:         if windows_sandbox_enabled {\n57:             Some(SandboxType::WindowsRestrictedToken)\n58:         } else {\n59:             None\n60:         }\n61:     } else {\n62:         None\n63:     }\n64: }\n"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/workspace/toolchains/android-sdk/platform-tools/adb",
+    "-s",
+    "emulator-5554",
+    "install",
+    "-r",
+    "/workspace/emulator-evidence/final-6e43c9e.apk"
+  ],
+  "started_utc": "2026-11-02T03:20:04.175152+00:00",
+  "finished_utc": "2026-11-02T03:20:31.139805+00:00",
+  "elapsed_seconds": 26.965,
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": "12-install-final-6e43c9e.txt",
+  "stderr": "12-install-final-6e43c9e.stderr.txt",
+  "platform": "cloud Android emulator; not a physical device"
+}

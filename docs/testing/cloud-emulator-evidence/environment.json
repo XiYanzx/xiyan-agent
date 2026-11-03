@@ -1,0 +1,18 @@
+{
+  "recorded_utc": "2026-11-02T03:15:10.217115+00:00",
+  "host": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "device_kind": "cloud Android emulator, not a physical iQOO phone",
+  "sdk_root": "/workspace/toolchains/android-sdk",
+  "api": 35,
+  "android": "15",
+  "abi": "x86_64",
+  "image_package": "system-images;android-35;default;x86_64",
+  "image_revision": 2,
+  "emulator_revision": "37.2.13",
+  "graphics": "software",
+  "vm_acceleration": "off (TCG; no /dev/kvm)",
+  "display": "720x1280 / 320dpi",
+  "security": "Default Android SELinux enforcing and adb authentication unchanged",
+  "fs_exception": "Auto-review approved only /home/agent/.android -> /workspace/.android symlink; HOME unchanged",
+  "network_policy": "restricted/enforced; dl.google.com permitted; policy unchanged"
+}

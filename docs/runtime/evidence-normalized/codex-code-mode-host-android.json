@@ -1,0 +1,26 @@
+{
+  "command": [
+    "cargo",
+    "--config",
+    "/workspace/runtime-spike/vendor/source-replacement.toml",
+    "build",
+    "--locked",
+    "--profile",
+    "dev-small",
+    "--target",
+    "aarch64-linux-android",
+    "--package",
+    "codex-code-mode-host",
+    "--bin",
+    "codex-code-mode-host"
+  ],
+  "cwd": "/workspace/runtime-spike/codex-android-diagnostic/codex-rs",
+  "started_utc": "2026-11-02T03:09:31.357787+00:00",
+  "finished_utc": "2026-11-02T03:09:51.456180+00:00",
+  "elapsed_seconds": 20.098,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "process_return_code": -15,
+  "wrapper_exit_code": -15,
+  "log": "codex-code-mode-host-android.log"
+}

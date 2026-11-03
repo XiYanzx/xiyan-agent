@@ -1,0 +1,18 @@
+{
+  "command": [
+    "readelf",
+    "-h",
+    "-l",
+    "-d",
+    "/workspace/runtime-spike/android-smoke"
+  ],
+  "cwd": "/workspace/xiyan-agent",
+  "started_utc": "2026-11-02T03:08:01.779323+00:00",
+  "finished_utc": "2026-11-02T03:08:01.781109+00:00",
+  "elapsed_seconds": 0.002,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "process_return_code": 0,
+  "wrapper_exit_code": 0,
+  "log": "android-smoke-readelf.log"
+}

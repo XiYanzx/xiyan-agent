@@ -1,0 +1,4 @@
+<resources>
+    <string name="chat_model_with_effort">%1$s · %2$s</string>
+    <string name="chat_execution_status">%1$s · 手机自动执行待接入</string>
+</resources>

@@ -1,0 +1,80 @@
+plugins {
+    id 'com.android.application'
+}
+
+abstract class GenerateXiyanBuildInfo extends DefaultTask {
+    @Input abstract org.gradle.api.provider.Property<String> getSourceCommit()
+    @Input abstract org.gradle.api.provider.Property<Boolean> getSourceTreeClean()
+    @Input abstract org.gradle.api.provider.Property<String> getApplicationId()
+    @Input abstract org.gradle.api.provider.Property<Integer> getVersionCode()
+    @Input abstract org.gradle.api.provider.Property<String> getVersionName()
+    @Input abstract org.gradle.api.provider.Property<String> getBuildType()
+    @OutputDirectory abstract org.gradle.api.file.DirectoryProperty getOutputDirectory()
+
+    @TaskAction void generate() {
+        project.rootProject.assertXiyanGitState()
+        def info = [schemaVersion: 1, sourceCommit: sourceCommit.get(),
+                sourceTreeClean: sourceTreeClean.get(), applicationId: applicationId.get(),
+                versionCode: versionCode.get(), versionName: versionName.get(), buildType: buildType.get()]
+        def output = new File(outputDirectory.get().asFile, 'xiyan-build.json')
+        output.parentFile.mkdirs()
+        output.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(info)) + '\n', 'UTF-8')
+    }
+}
+
+android {
+    namespace 'io.xiyan.agent'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.xiyan.agent.p0'
+        minSdk 29
+        targetSdk 35
+        versionCode 10
+        versionName '0.1.0-p0.10'
+        testInstrumentationRunner 'io.xiyan.agent.account.CredentialStoreInstrumentation'
+        buildConfigField 'String', 'SOURCE_COMMIT', groovy.json.JsonOutput.toJson(rootProject.xiyanGitState.sourceCommit)
+        buildConfigField 'boolean', 'SOURCE_TREE_CLEAN', rootProject.xiyanGitState.sourceTreeClean.toString()
+    }
+    buildFeatures { buildConfig true; aidl true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+        warningsAsErrors true
+    }
+}
+
+androidComponents.onVariants(androidComponents.selector().all()) { variant ->
+    def generateBuildInfo = tasks.register("generate${variant.name.capitalize()}XiyanBuildInfo", GenerateXiyanBuildInfo) {
+        sourceCommit.set(rootProject.xiyanGitState.sourceCommit)
+        sourceTreeClean.set(rootProject.xiyanGitState.sourceTreeClean)
+        applicationId.set(variant.applicationId)
+        versionCode.set(variant.outputs.first().versionCode)
+        versionName.set(variant.outputs.first().versionName)
+        buildType.set(variant.buildType)
+        outputDirectory.set(layout.buildDirectory.dir("generated/xiyanBuild/${variant.name}/assets"))
+    }
+    // 使用 AGP 的生成目录接口，让 lint / merge / package 的依赖均由 provider 传播。
+    variant.sources.assets.addGeneratedSourceDirectory(generateBuildInfo) { it.outputDirectory }
+    tasks.configureEach { task ->
+        if (task.name == "generate${variant.name.capitalize()}BuildConfig") {
+            task.doFirst { rootProject.assertXiyanGitState() }
+        }
+    }
+}
+
+dependencies {
+    implementation project(':core')
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
+    testImplementation 'junit:junit:4.13.2'
+}

@@ -1,0 +1,9 @@
+    Updating crates.io index
+    Updating git repository `https://github.com/dzbarsky/rules_rust`
+    Updating git repository `https://github.com/modelcontextprotocol/rust-sdk`
+    Updating crates.io index
+    Updating git repository `https://github.com/helix-editor/nucleo.git`
+    Updating git repository `https://github.com/microsoft/mxc`
+    Updating git repository `https://github.com/hyperium/h3`
+error: cannot update the lock file /workspace/runtime-spike/codex/codex-rs/Cargo.lock because --locked was passed to prevent this
+help: to generate the lock file without accessing the network, remove the --locked flag and use --offline instead.

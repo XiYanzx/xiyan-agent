@@ -1,0 +1,34 @@
+{
+  "download": {
+    "argv": [
+      "curl",
+      "--fail",
+      "--location",
+      "--retry",
+      "2",
+      "--max-time",
+      "300",
+      "--output",
+      "codex-app-server-package-aarch64-unknown-linux-musl.tar.gz",
+      "https://github.com/openai/codex/releases/download/rust-v0.166.0/codex-app-server-package-aarch64-unknown-linux-musl.tar.gz"
+    ],
+    "cwd": "/workspace/runtime-spike/release-inspect",
+    "observed_at": "2026-11-02T03:03:14Z",
+    "exit_code": 0,
+    "source": "Actual shell execution; curl progress reached 100% (138 MiB). No release executable launched."
+  },
+  "inspection": {
+    "argv": [
+      "python3",
+      "/workspace/xiyan-agent/docs/runtime/linux-release-evidence/inspect_release.py",
+      "--work-dir",
+      "/workspace/runtime-spike/release-inspect",
+      "--output-dir",
+      "/workspace/xiyan-agent/docs/runtime/linux-release-evidence"
+    ],
+    "cwd": "/workspace",
+    "exit_code": 0,
+    "elf_count": 5,
+    "executed_release_binaries": false
+  }
+}

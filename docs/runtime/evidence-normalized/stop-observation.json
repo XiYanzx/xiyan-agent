@@ -1,0 +1,55 @@
+{
+  "observed_utc": "2026-11-02T03:10:26.383764+00:00",
+  "processes": [
+    {
+      "pid": 555,
+      "pgid": 555,
+      "kind": "git",
+      "state": "Z",
+      "cwd": null
+    },
+    {
+      "pid": 664,
+      "pgid": 664,
+      "kind": "git",
+      "state": "Z",
+      "cwd": null
+    },
+    {
+      "pid": 5930,
+      "pgid": 3777,
+      "kind": "rustc",
+      "state": "Z",
+      "cwd": null
+    },
+    {
+      "pid": 5933,
+      "pgid": 3777,
+      "kind": "rustc",
+      "state": "Z",
+      "cwd": null
+    },
+    {
+      "pid": 7383,
+      "pgid": 5978,
+      "kind": "rustc",
+      "state": "Z",
+      "cwd": null
+    },
+    {
+      "pid": 7420,
+      "pgid": 5978,
+      "kind": "rustc",
+      "state": "Z",
+      "cwd": null
+    },
+    {
+      "pid": 7456,
+      "pgid": 5978,
+      "kind": "rustc",
+      "state": "Z",
+      "cwd": null
+    }
+  ],
+  "reason": "Parent instruction: stop vendor build pending network authorization"
+}

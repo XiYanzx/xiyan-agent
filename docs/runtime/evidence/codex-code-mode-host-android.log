@@ -1,0 +1,30 @@
+    Updating git repository `https://github.com/openai-oss-forks/tungstenite-rs`
+    Updating git repository `https://github.com/openai-oss-forks/crossterm`
+    Updating git repository `https://github.com/openai-oss-forks/tokio-tungstenite`
+    Updating git repository `https://github.com/seanh-oai/rusty_v8.git`
+    Updating git submodule `https://github.com/denoland/chromium_build.git`
+    Updating git submodule `https://chromium.googlesource.com/chromium/src/buildtools.git`
+warning: spurious network error (3 tries remaining): [56] Failure when receiving data from the peer (CONNECT tunnel failed, response 403); class=Net (12)
+warning: spurious network error (2 tries remaining): [56] Failure when receiving data from the peer (CONNECT tunnel failed, response 403); class=Net (12)
+warning: spurious network error (1 try remaining): [56] Failure when receiving data from the peer (CONNECT tunnel failed, response 403); class=Net (12)
+error: failed to load source for dependency `v8`
+
+Caused by:
+  unable to update https://github.com/seanh-oai/rusty_v8.git?rev=350c5a859a9b3c84ab8701b3ad51e3b7699b30c0#350c5a85
+
+Caused by:
+  failed to update submodule `buildtools`
+
+Caused by:
+  failed to fetch submodule `buildtools` from https://chromium.googlesource.com/chromium/src/buildtools.git
+
+Caused by:
+  failed to clone into: /workspace/toolchains/rust/cargo/git/db/buildtools-fd05048564c2de40
+
+Caused by:
+  network failure seems to have happened
+  if a proxy or similar is necessary `net.git-fetch-with-cli` may help here
+  https://doc.rust-lang.org/cargo/reference/config.html#netgit-fetch-with-cli
+
+Caused by:
+  [56] Failure when receiving data from the peer (CONNECT tunnel failed, response 403); class=Net (12)

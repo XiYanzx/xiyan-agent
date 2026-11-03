@@ -1,0 +1,59 @@
+ACCESSIBILITY MANAGER (dumpsys accessibility)
+
+currentUserId=0
+hasMagnificationConnection=false
+Magnifier on display#0
+    MagnificationConfig[mode: 1, activated: false, scale: 1.0, centerX: 0.0, centerY: 0.0] 
+    Magnification region=SkRegion((0,0,720,1184))
+    IdOfLastServiceToMagnify=-1
+    SupportWindowMagnification=true
+    WindowMagnificationConnectionState=DISCONNECTED
+User state[
+     attributes:{id=0, touchExplorationEnabled=false, serviceHandlesDoubleTap=false, requestMultiFingerGestures=false, requestTwoFingerPassthrough=false, sendMotionEventsEnabledfalse, displayMagnificationEnabled=false, autoclickEnabled=false, nonInteractiveUiTimeout=0, interactiveUiTimeout=0, installedServiceCount=2, magnificationModes={0=1}, magnificationCapabilities=3, audioDescriptionByDefaultEnabled=false, magnificationFollowTypingEnabled=true, alwaysOnMagnificationEnabled=true}
+     shortcut key:{}
+     button:{}
+     button target:{null}
+     qs shortcut targets:{}
+     a11y tiles in QS panel:{}
+     Bound services:{Service[label=Xiyan Agent · P0, feedbackType[FEEDBACK_GENERIC], capabilities=161, eventTypes=[TYPE_WINDOW_STATE_CHANGED, TYPE_WINDOW_CONTENT_CHANGED, TYPE_WINDOWS_CHANGED], notificationTimeout=100, requestA11yBtn=false]}
+     Enabled services:{{io.xiyan.agent.p0/io.xiyan.agent.control.XiyanAccessibilityService}}
+     Binding services:{}
+     Crashed services:{}
+     Client list info:{
+          Client list callbacks: 3
+          Client list killed: false
+          Client list broadcasts count: -1
+          Registered clients:{
+[com.android.inputmethod.latin][io.xiyan.agent.p0][com.android.launcher3]}]
+Global Info [ Top focused display Id = 0
+     Active Window Id = 129
+     Top Focused Window Id = 129
+     Accessibility Focused Window Id = -1 ]
+
+Display[0] : 
+A11yWindow[AccessibilityWindowInfo[title=Navigation bar, displayId=0, id=117, taskId=-1, type=TYPE_SYSTEM, layer=2, region=SkRegion((0,1184,720,1280)), bounds=Rect(0, 1184 - 720, 1280), focused=false, active=false, pictureInPicture=false, transitionTime=1372875, hasParent=false, isAnchored=false, hasChildren=false]]
+WindowInfo[WindowInfo[title=Navigation bar, displayId=0, taskId=-1, type=2019, layer=0, token=android.os.BinderProxy@2bb1c63, region=SkRegion((0,1184,720,1280)), bounds=Rect(0, 1184 - 720, 1280), parent=null, focused=false, children=null, accessibility anchor=9223372034707292159, pictureInPicture=false, watchOutsideTouch=false, mTransformMatrix=Matrix{[1.0, 0.0, 0.0][0.0, 1.0, 1184.0][0.0, 0.0, 1.0]}, mMagnificationSpec=<scale:1.0,offsetX:0.0,offsetY:0.0>, locales=[en_US]]]
+,
+A11yWindow[AccessibilityWindowInfo[title=null, displayId=0, id=127, taskId=-1, type=TYPE_SYSTEM, layer=1, region=SkRegion((0,0,720,48)), bounds=Rect(0, 0 - 720, 48), focused=false, active=false, pictureInPicture=false, transitionTime=1372900, hasParent=false, isAnchored=false, hasChildren=false]]
+WindowInfo[WindowInfo[title=null, displayId=0, taskId=-1, type=2000, layer=1, token=android.os.BinderProxy@f30d4c9, region=SkRegion((0,0,720,48)), bounds=Rect(0, 0 - 720, 48), parent=null, focused=false, children=null, accessibility anchor=9223372034707292159, pictureInPicture=false, watchOutsideTouch=false, mTransformMatrix=Matrix{[1.0, 0.0, 0.0][0.0, 1.0, 0.0][0.0, 0.0, 1.0]}, mMagnificationSpec=<scale:1.0,offsetX:0.0,offsetY:0.0>, locales=[en_US]]]
+,
+A11yWindow[AccessibilityWindowInfo[title=Xiyan Agent · P0, displayId=0, id=129, taskId=9, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,720,1280)), bounds=Rect(0, 0 - 720, 1280), focused=true, active=true, pictureInPicture=false, transitionTime=1372900, hasParent=false, isAnchored=false, hasChildren=false]]
+WindowInfo[WindowInfo[title=Xiyan Agent · P0, displayId=0, taskId=9, type=1, layer=2, token=android.os.BinderProxy@eb88e8d, region=SkRegion((0,0,720,1280)), bounds=Rect(0, 0 - 720, 1280), parent=null, focused=true, children=null, accessibility anchor=9223372034707292159, pictureInPicture=false, watchOutsideTouch=false, mTransformMatrix=Matrix{[1.0, 0.0, 0.0][0.0, 1.0, 0.0][0.0, 0.0, 1.0]}, mMagnificationSpec=<scale:1.0,offsetX:0.0,offsetY:0.0>, locales=[en_US]]]
+
+
+Window attributes:[{117=AccessibilityWindowAttributes{mAccessibilityWindowTitle=Navigation barmLocales=[en_US]}, 118=AccessibilityWindowAttributes{mAccessibilityWindowTitle=nullmLocales=[en_US]}, 119=AccessibilityWindowAttributes{mAccessibilityWindowTitle=HomemLocales=[en_US]}, 123=AccessibilityWindowAttributes{mAccessibilityWindowTitle=nullmLocales=[en_US]}, 124=AccessibilityWindowAttributes{mAccessibilityWindowTitle=nullmLocales=[en_US]}, 125=AccessibilityWindowAttributes{mAccessibilityWindowTitle=nullmLocales=[en_US]}, 126=AccessibilityWindowAttributes{mAccessibilityWindowTitle=nullmLocales=[en_US]}, 127=AccessibilityWindowAttributes{mAccessibilityWindowTitle=nullmLocales=[en_US]}, 129=AccessibilityWindowAttributes{mAccessibilityWindowTitle=Xiyan Agent · P0mLocales=[en_US]}}]
+A11yInputFilter Info : 
+Enabled features of Display [0] = [MotionEventInjector]
+Global client list info:{
+    Client list callbacks: 4
+    Client list killed: false
+    Client list broadcasts count: -1
+    Registered clients:{
+[com.android.permissioncontroller][com.android.settings, com.android.server.telecom, com.android.providers.settings, com.android.dynsystem, com.android.inputdevices, android, com.android.location.fused, com.android.keychain, com.android.DeviceAsWebcam, com.android.localtransport, com.android.emulator.multidisplay][com.android.systemui][com.android.dynsystem, com.android.inputdevices, com.android.emulator.multidisplay, com.android.location.fused, com.android.server.telecom, com.android.settings, com.android.localtransport, com.android.keychain, com.android.DeviceAsWebcam, com.android.providers.settings, android]
+
+Proxy manager state:
+    Number of proxy connections: 0
+    Registered proxy connections:
+Accessibility Display Listener:
+    SystemUI uid: 10120
+    1 valid display: 0

@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/workspace/toolchains/android-ndk/android-ndk-r28c/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fPIE",
+    "-pie",
+    "-Wl,-z,max-page-size=16384",
+    "-Wl,-z,common-page-size=16384",
+    "tools/runtime/android_smoke.c",
+    "-o",
+    "/workspace/runtime-spike/android-smoke"
+  ],
+  "cwd": "/workspace/xiyan-agent",
+  "started_utc": "2026-11-02T03:08:01.711389+00:00",
+  "finished_utc": "2026-11-02T03:08:01.743285+00:00",
+  "elapsed_seconds": 0.032,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "process_return_code": 0,
+  "wrapper_exit_code": 0,
+  "log": "android-ndk-smoke.log"
+}

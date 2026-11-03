@@ -1,0 +1,8 @@
+Starting: Intent { cmp=io.xiyan.agent.p0/io.xiyan.agent.MainActivity }
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+Status: ok
+LaunchState: UNKNOWN (0)
+Activity: io.xiyan.agent.p0/io.xiyan.agent.MainActivity
+TotalTime: 0
+WaitTime: 782
+Complete

@@ -1,0 +1,428 @@
+{
+  "observed_at": "2026-11-02T03:04:19.882944+00:00",
+  "inspection_only": true,
+  "executed_release_binaries": false,
+  "host": {
+    "system": "Linux",
+    "node": "290d814742cd",
+    "release": "6.18.57",
+    "version": "#1 SMP Tue Oct 20 21:56:04 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "archive": {
+    "name": "codex-app-server-package-aarch64-unknown-linux-musl.tar.gz",
+    "url": "https://github.com/openai/codex/releases/download/rust-v0.166.0/codex-app-server-package-aarch64-unknown-linux-musl.tar.gz",
+    "size": 145150661,
+    "sha256": "50bb0d5ce10faa13eb6e7b0b25e1fe9712d686c41b3c3fdff587512064630d5d",
+    "matches_github_asset_size_and_digest": true
+  },
+  "archive_members": [
+    {
+      "name": "bin",
+      "size": 0,
+      "mode": "0o755",
+      "kind": "directory"
+    },
+    {
+      "name": "bin/codex-app-server",
+      "size": 214949224,
+      "mode": "0o755",
+      "kind": "file"
+    },
+    {
+      "name": "bin/codex-code-mode-host",
+      "size": 70838624,
+      "mode": "0o755",
+      "kind": "file"
+    },
+    {
+      "name": "bin/codex-exec-server",
+      "size": 72132456,
+      "mode": "0o755",
+      "kind": "file"
+    },
+    {
+      "name": "codex-package.json",
+      "size": 269,
+      "mode": "0o644",
+      "kind": "file"
+    },
+    {
+      "name": "codex-path",
+      "size": 0,
+      "mode": "0o755",
+      "kind": "directory"
+    },
+    {
+      "name": "codex-path/rg",
+      "size": 4506992,
+      "mode": "0o755",
+      "kind": "file"
+    },
+    {
+      "name": "codex-resources",
+      "size": 0,
+      "mode": "0o755",
+      "kind": "directory"
+    },
+    {
+      "name": "codex-resources/bwrap",
+      "size": 529168,
+      "mode": "0o755",
+      "kind": "file"
+    }
+  ],
+  "elf_results": [
+    {
+      "path": "bin/codex-app-server",
+      "size": 214949224,
+      "sha256": "f21b0b95117d4f32151abe78d8030cc1175e877fe741deaaea46451f2b51ade2",
+      "file": "/workspace/runtime-spike/release-inspect/extracted/bin/codex-app-server: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, stripped",
+      "elf_type": 2,
+      "machine": 183,
+      "interpreter": null,
+      "needed_lines": [],
+      "load_segments": [
+        {
+          "flags": 5,
+          "offset": 0,
+          "virtual_address": 4194304,
+          "file_size": 210026692,
+          "memory_size": 210026692,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        },
+        {
+          "flags": 6,
+          "offset": 210092128,
+          "virtual_address": 214286432,
+          "file_size": 4855384,
+          "memory_size": 5467160,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        }
+      ],
+      "all_loads_aligned_16k": true
+    },
+    {
+      "path": "bin/codex-code-mode-host",
+      "size": 70838624,
+      "sha256": "812d23c5cdce3944f2e9839a46f107e5168ed78363cfd2b30be9638a9296119d",
+      "file": "/workspace/runtime-spike/release-inspect/extracted/bin/codex-code-mode-host: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, stripped",
+      "elf_type": 2,
+      "machine": 183,
+      "interpreter": null,
+      "needed_lines": [],
+      "load_segments": [
+        {
+          "flags": 5,
+          "offset": 0,
+          "virtual_address": 4194304,
+          "file_size": 68610716,
+          "memory_size": 68610716,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        },
+        {
+          "flags": 6,
+          "offset": 68652984,
+          "virtual_address": 72847288,
+          "file_size": 2183744,
+          "memory_size": 2372992,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        }
+      ],
+      "all_loads_aligned_16k": true
+    },
+    {
+      "path": "bin/codex-exec-server",
+      "size": 72132456,
+      "sha256": "ac3e7be94dd6c40eea7b4a4ea39af5274b96948e1fa913976aa86bbf4ad610c5",
+      "file": "/workspace/runtime-spike/release-inspect/extracted/bin/codex-exec-server: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, stripped",
+      "elf_type": 2,
+      "machine": 183,
+      "interpreter": null,
+      "needed_lines": [],
+      "load_segments": [
+        {
+          "flags": 5,
+          "offset": 0,
+          "virtual_address": 4194304,
+          "file_size": 69758692,
+          "memory_size": 69758692,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        },
+        {
+          "flags": 6,
+          "offset": 69764512,
+          "virtual_address": 74024352,
+          "file_size": 2366232,
+          "memory_size": 2976624,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        }
+      ],
+      "all_loads_aligned_16k": true
+    },
+    {
+      "path": "codex-path/rg",
+      "size": 4506992,
+      "sha256": "e36d0eb52e70696bdf1781392722e05a21bb91d3b7b762ef5ec20e5df2ec687b",
+      "file": "/workspace/runtime-spike/release-inspect/extracted/codex-path/rg: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, for GNU/Linux 3.7.0, BuildID[sha1]=baa6dc511212e629b5dca985e3dd469341efccf7, stripped",
+      "elf_type": 3,
+      "machine": 183,
+      "interpreter": "/lib/ld-linux-aarch64.so.1",
+      "needed_lines": [
+        "0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]",
+        "0x0000000000000001 (NEEDED)             Shared library: [libpthread.so.0]",
+        "0x0000000000000001 (NEEDED)             Shared library: [libdl.so.2]",
+        "0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]",
+        "0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]"
+      ],
+      "load_segments": [
+        {
+          "flags": 5,
+          "offset": 0,
+          "virtual_address": 0,
+          "file_size": 4283300,
+          "memory_size": 4283300,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        },
+        {
+          "flags": 6,
+          "offset": 4284824,
+          "virtual_address": 4350360,
+          "file_size": 219768,
+          "memory_size": 220112,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        }
+      ],
+      "all_loads_aligned_16k": true
+    },
+    {
+      "path": "codex-resources/bwrap",
+      "size": 529168,
+      "sha256": "c547cbdc762a70ed216789ffaa4c6c0e7d2beabe32245a498f8e365a9fc8dab4",
+      "file": "/workspace/runtime-spike/release-inspect/extracted/codex-resources/bwrap: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, stripped",
+      "elf_type": 2,
+      "machine": 183,
+      "interpreter": null,
+      "needed_lines": [],
+      "load_segments": [
+        {
+          "flags": 5,
+          "offset": 0,
+          "virtual_address": 4194304,
+          "file_size": 473216,
+          "memory_size": 473216,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        },
+        {
+          "flags": 6,
+          "offset": 516688,
+          "virtual_address": 4776528,
+          "file_size": 10880,
+          "memory_size": 18432,
+          "alignment": 65536,
+          "compatible_16k_alignment": true
+        }
+      ],
+      "all_loads_aligned_16k": true
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "file",
+        "--version"
+      ],
+      "exit_code": 0,
+      "output": "file-version.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "--version"
+      ],
+      "exit_code": 0,
+      "output": "readelf-version.txt"
+    },
+    {
+      "argv": [
+        "curl",
+        "--version"
+      ],
+      "exit_code": 0,
+      "output": "curl-version.txt"
+    },
+    {
+      "argv": [
+        "python3",
+        "--version"
+      ],
+      "exit_code": 0,
+      "output": "python3-version.txt"
+    },
+    {
+      "argv": [
+        "file",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-app-server"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-app-server.file.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-h",
+        "-l",
+        "-d",
+        "-n",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-app-server"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-app-server.readelf.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-d",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-app-server"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-app-server.dynamic.txt"
+    },
+    {
+      "argv": [
+        "file",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-code-mode-host"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-code-mode-host.file.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-h",
+        "-l",
+        "-d",
+        "-n",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-code-mode-host"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-code-mode-host.readelf.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-d",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-code-mode-host"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-code-mode-host.dynamic.txt"
+    },
+    {
+      "argv": [
+        "file",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-exec-server"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-exec-server.file.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-h",
+        "-l",
+        "-d",
+        "-n",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-exec-server"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-exec-server.readelf.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-d",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/bin/codex-exec-server"
+      ],
+      "exit_code": 0,
+      "output": "bin_codex-exec-server.dynamic.txt"
+    },
+    {
+      "argv": [
+        "file",
+        "/workspace/runtime-spike/release-inspect/extracted/codex-path/rg"
+      ],
+      "exit_code": 0,
+      "output": "codex-path_rg.file.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-h",
+        "-l",
+        "-d",
+        "-n",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/codex-path/rg"
+      ],
+      "exit_code": 0,
+      "output": "codex-path_rg.readelf.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-d",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/codex-path/rg"
+      ],
+      "exit_code": 0,
+      "output": "codex-path_rg.dynamic.txt"
+    },
+    {
+      "argv": [
+        "file",
+        "/workspace/runtime-spike/release-inspect/extracted/codex-resources/bwrap"
+      ],
+      "exit_code": 0,
+      "output": "codex-resources_bwrap.file.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-h",
+        "-l",
+        "-d",
+        "-n",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/codex-resources/bwrap"
+      ],
+      "exit_code": 0,
+      "output": "codex-resources_bwrap.readelf.txt"
+    },
+    {
+      "argv": [
+        "readelf",
+        "-d",
+        "--wide",
+        "/workspace/runtime-spike/release-inspect/extracted/codex-resources/bwrap"
+      ],
+      "exit_code": 0,
+      "output": "codex-resources_bwrap.dynamic.txt"
+    }
+  ]
+}

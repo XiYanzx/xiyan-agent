@@ -1,0 +1,240 @@
+{
+  "repository": "https://github.com/lucide-icons/lucide",
+  "revision": "a529c28a8782e7954dde3d1a5e4409e829242b86",
+  "licenseUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/LICENSE",
+  "licenseSha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+  "derivation": "SVG primitives converted to Android paths; 24-unit viewport, 2-unit round strokes, runtime tint; no downloaded script executed",
+  "icons": [
+    {
+      "icon": "house",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/house.svg",
+      "originalSha256": "28216c479005731ef5e382e7d8627eda2b129b019eb1f3d9de9f5915576d448e",
+      "androidResource": "ic_lucide_house.xml",
+      "derivedSha256": "2fdf8e28e75fd62b93bb14dda92e31a4f36dfd9ce09536753a498a47f5d12b15"
+    },
+    {
+      "icon": "message-square",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/message-square.svg",
+      "originalSha256": "5812a3be783fdcd73efd2b6026e03131e4b8c6649e7d52aa2dc7bf2e2023a59d",
+      "androidResource": "ic_lucide_message_square.xml",
+      "derivedSha256": "8295f48ca7cc7070c7f502e7e6c1080a3197c10c7243577a1b3dcce935a9044c"
+    },
+    {
+      "icon": "list-todo",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/list-todo.svg",
+      "originalSha256": "8620dcb86d9d27e0eeebc627b6a0f995ff3bb0264fd3c12ad003401981771848",
+      "androidResource": "ic_lucide_list_todo.xml",
+      "derivedSha256": "bb50a3fec5c063c8373a34f5b177ca54ba66f3a6402dfcd867a2ebb5a1f07bac"
+    },
+    {
+      "icon": "settings-2",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/settings-2.svg",
+      "originalSha256": "06d06c191bd7eb28afaf9d40acb5c49ef69448fdeda91801d9823d7c440a4e10",
+      "androidResource": "ic_lucide_settings_2.xml",
+      "derivedSha256": "9043eeb408cbd980484e5cd1534364b9b62c08df9598a42744fbd8878913b6ed"
+    },
+    {
+      "icon": "smartphone",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/smartphone.svg",
+      "originalSha256": "f9fdb700b50feb5fc6436f53eb9813e9eb56a9071ac4cdcba69c7f7c1c13877d",
+      "androidResource": "ic_lucide_smartphone.xml",
+      "derivedSha256": "ba3531da9d2b2c6df338513d0ac209c6df927d9847aaede6a5a3a83a81ddc19e"
+    },
+    {
+      "icon": "gamepad-2",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/gamepad-2.svg",
+      "originalSha256": "b0671de7afbebdafc4d655d867d9851947170b906fb187e749410039df867509",
+      "androidResource": "ic_lucide_gamepad_2.xml",
+      "derivedSha256": "4f799a12aff3b09971ed45983b5a6b4f4443edd3e05c92e4d8b2a4cbf9116df2"
+    },
+    {
+      "icon": "cpu",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/cpu.svg",
+      "originalSha256": "ec83bb69ec029d367d749afc445b39c8e95891ebf99b0400652677c2b149b99c",
+      "androidResource": "ic_lucide_cpu.xml",
+      "derivedSha256": "a4ca6a6de8d2d6826967d2a25b6d045958d059a1d707af2e0f5311d90e4d0661"
+    },
+    {
+      "icon": "menu",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/menu.svg",
+      "originalSha256": "af6491988ac1ba30dc5414f485bc48713e957e1edb0fbef4a0dd8691c3c21598",
+      "androidResource": "ic_lucide_menu.xml",
+      "derivedSha256": "5d20208d4cc18ebe61b8e18d5fd6fb77ee599c643d9400a09ae5abad47e983dd"
+    },
+    {
+      "icon": "plus",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/plus.svg",
+      "originalSha256": "7f6af73bf1ff6c4bca3f18351c8d1bdec6749c0c2530c4de5da85d520c21df17",
+      "androidResource": "ic_lucide_plus.xml",
+      "derivedSha256": "9f6cec7c29db89a71b832c42489cb355e6a9352e3eef62d1ff7c9d7cb2f9fad7"
+    },
+    {
+      "icon": "arrow-up",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/arrow-up.svg",
+      "originalSha256": "8c22c25874c80bb062bef985d207d8f1d4a4d7847237d0a8cf720a3235968518",
+      "androidResource": "ic_lucide_arrow_up.xml",
+      "derivedSha256": "d87784f5d0a0efe11a37c624001193106a63c48fdbf37354d692d7cc38c693ef"
+    },
+    {
+      "icon": "square",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/square.svg",
+      "originalSha256": "bd979354f0ab184b95cecf03eedefe40c2dc65830ac6d7e60017b2b25a354acb",
+      "androidResource": "ic_lucide_square.xml",
+      "derivedSha256": "11abaed4900b9c774bce8dc3da8a5293fcad6154b0dd1adc24f73f3f6542cef2"
+    },
+    {
+      "icon": "user-round",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/user-round.svg",
+      "originalSha256": "84870f26f3faf8da45da84174517519e81b9e8f00319c78954fcbb74f50038a1",
+      "androidResource": "ic_lucide_user_round.xml",
+      "derivedSha256": "91f3c7ebc6c4c869024e64b26646365193a482a066008e6dcbc90d9f9ed1e01a"
+    },
+    {
+      "icon": "chart-no-axes-column",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/chart-no-axes-column.svg",
+      "originalSha256": "5dfd8fc5b5417dad858991de4969c3fe1c4a466104d0880a15b691ff7c5b1f12",
+      "androidResource": "ic_lucide_chart_no_axes_column.xml",
+      "derivedSha256": "236d544f9fefad50fe665e3300bf431ee89c3a2fa207d68b936a3674d9aaa97d"
+    },
+    {
+      "icon": "chevron-right",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/chevron-right.svg",
+      "originalSha256": "2758143d7b2434e4aa7307dfd34405c87909ff4052f21b5f3f40d45224b4f19b",
+      "androidResource": "ic_lucide_chevron_right.xml",
+      "derivedSha256": "665fb2eb3e5cbfa358755f1542df14a26b8f395c6dd3caa9eb2de4e5a499817c"
+    },
+    {
+      "icon": "arrow-left",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/arrow-left.svg",
+      "originalSha256": "c5f4b88076108eb1a0d95336e1aa7e7bb1419a3a92af96f6247d88cd3456f933",
+      "androidResource": "ic_lucide_arrow_left.xml",
+      "derivedSha256": "2f4f954dc674524779b230b37d4a41445507b93584ee9c4e281fd6503516c173"
+    },
+    {
+      "icon": "check",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/check.svg",
+      "originalSha256": "7f33acc9a77a61659531044525fc008edebe215bf4dcf1c789c8674ad3277db0",
+      "androidResource": "ic_lucide_check.xml",
+      "derivedSha256": "427d1d9f0d13b4dded67d288d8d404a516172943df1f2d6bd749c55bc7c954a9"
+    },
+    {
+      "icon": "refresh-cw",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/refresh-cw.svg",
+      "originalSha256": "2e10dd403c85a24f163d59fc6151aa21147fe9402e1305dfc8979208caee8944",
+      "androidResource": "ic_lucide_refresh_cw.xml",
+      "derivedSha256": "9b2bca6b82f039ce7c84b66603f32321ee6c2592a0f84e01053f825e7653cb56"
+    },
+    {
+      "icon": "x",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/x.svg",
+      "originalSha256": "4a9cdab38fbb96162e7dace28e33f4ca0e49d8963a6162abc3d4691b7d675117",
+      "androidResource": "ic_lucide_x.xml",
+      "derivedSha256": "ff5462ddf2be6965e5d6ae90cb4e4a12d27f299c5d6dd110c57d7b6ca7ba6e5b"
+    },
+    {
+      "icon": "sun",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/sun.svg",
+      "originalSha256": "a3955c8b0425fcc5c9ba12d2bdd77fe53b2cd5dd05e7742a56f342e996fb2ef8",
+      "androidResource": "ic_lucide_sun.xml",
+      "derivedSha256": "ea112bd92ffa5e762ab3535a6ff2a7f1f67466a4cb0cebd4079371ebf7d71bb2"
+    },
+    {
+      "icon": "moon",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/moon.svg",
+      "originalSha256": "205b959e940d5841f0ce1d09c933153da9d9c94130a54d5cc0c68c2af1d403da",
+      "androidResource": "ic_lucide_moon.xml",
+      "derivedSha256": "8fc8f89fdd98aebcb14466133018e633d239522a0492dc32337d0b26dfe788f0"
+    },
+    {
+      "icon": "save",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/save.svg",
+      "originalSha256": "ee9d56a7fec4b20dd6689546d41f68219ea8cbd67f99bd17a1bdaff5be6edb53",
+      "androidResource": "ic_lucide_save.xml",
+      "derivedSha256": "3481e95de1bd9d0f5bd040a80b092d6d07474828b7ca92418c7de5bf0c50452f"
+    },
+    {
+      "icon": "clock",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/clock.svg",
+      "originalSha256": "e9d3e3acf4d1c280fcf8092293439dc0a4756a908ceb859de144b12451cd1cb9",
+      "androidResource": "ic_lucide_clock.xml",
+      "derivedSha256": "c67c984a327141c1c1eed5dedbce030633e4a139272aa72d872a8936876e550e"
+    },
+    {
+      "icon": "info",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/info.svg",
+      "originalSha256": "bc977a64eb96f3e9c1041ffd09a3fceb70e3e65c02b571f76064062ed31f3cb9",
+      "androidResource": "ic_lucide_info.xml",
+      "derivedSha256": "a7e6682323099e2b67217fa74a94a1e99e4a8607116fd44c004874d57aa1ca8a"
+    },
+    {
+      "icon": "chevron-down",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/chevron-down.svg",
+      "originalSha256": "66ea878e72ed3488bb3b464c39dfdccee8d1f78e560dccea40e5e12da0e87e87",
+      "androidResource": "ic_lucide_chevron_down.xml",
+      "derivedSha256": "bf65c9de089c6c17a0364d95b2efb1120ca661ce4b089dac225532b993852d49"
+    },
+    {
+      "icon": "ellipsis",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/ellipsis.svg",
+      "originalSha256": "4f495cc72013ffdfec677f03b33a150f7b4dd741979283fd6853a09024bca112",
+      "androidResource": "ic_lucide_ellipsis.xml",
+      "derivedSha256": "c27b78daf7824afddbaa625ffffad7f6600bb49bb1b7f703ae8d5965bcd149d1"
+    },
+    {
+      "icon": "copy",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/copy.svg",
+      "originalSha256": "ea80e566c7a12628a447cb53179b19aea4f60b9143e2becd0d0f20bf260e5718",
+      "androidResource": "ic_lucide_copy.xml",
+      "derivedSha256": "f198b261fb5396f8101b25c8b0a16b63da22fbcb32635520b24cf7d6f66bd26b"
+    },
+    {
+      "icon": "shield-check",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/shield-check.svg",
+      "originalSha256": "8d4fcdbde5bba4abb1a2f6fe53e37ceb6343a1d5449a9d88f6f97c1971d26c4e",
+      "androidResource": "ic_lucide_shield_check.xml",
+      "derivedSha256": "98be124d1e38dd6e21a7fb035179a9c214ff38002948144ea7c99f0dad99bbec"
+    },
+    {
+      "icon": "log-out",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/log-out.svg",
+      "originalSha256": "f24b5b45c05a3acc346af8095408f6ba197ff58ea1641a4f2cb25a9702d2c0ac",
+      "androidResource": "ic_lucide_log_out.xml",
+      "derivedSha256": "a9cac9cb5122bf7f55194536223834a1af17220fddbc32c8b5e72e48113927c4"
+    },
+    {
+      "icon": "external-link",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/external-link.svg",
+      "originalSha256": "3891241b8c3bfc3a8a930078f26ffc5a7e9763da6d0162ace2050b28d4c1d1fe",
+      "androidResource": "ic_lucide_external_link.xml",
+      "derivedSha256": "df94164ccbe0b49df04636755c5c7c48c6f9cd03f2d576f5a03fed4cc63c642d"
+    },
+    {
+      "icon": "zap",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/zap.svg",
+      "originalSha256": "4c395891eab4d1e5627c5d414a16db037317cb2f12453de0f3a1130964c6d444",
+      "androidResource": "ic_lucide_zap.xml",
+      "derivedSha256": "2db33b4ad6104b3e6b1667f31451bbacd1dc5d0effc7493ae68f068d67983a54"
+    },
+    {
+      "icon": "circle-alert",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/circle-alert.svg",
+      "originalSha256": "ce3e98b7a03b78c0071131df42466e4e1ff5187fccad30e739ec9ce951cf685a",
+      "androidResource": "ic_lucide_circle_alert.xml",
+      "derivedSha256": "525fd2fd6488cab1218577c30ef8f65ad4573a95e095f21eb6b32ed12e139004"
+    },
+    {
+      "icon": "circle-check",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/circle-check.svg",
+      "originalSha256": "9711e045a5999f8a3b0782eb88e09b04e0559bc7b379dcc0a4ae645223e10345",
+      "androidResource": "ic_lucide_circle_check.xml",
+      "derivedSha256": "b3ab663094bdf69d414d16b4ab9f77c09985e2f5832bba50ab5d98c92972e50b"
+    },
+    {
+      "icon": "search",
+      "sourceUrl": "https://raw.githubusercontent.com/lucide-icons/lucide/a529c28a8782e7954dde3d1a5e4409e829242b86/icons/search.svg",
+      "originalSha256": "283d371c2e433817bb9c0c8310caa6c77fa4177c0f4f1168d9c83b97af7389dc",
+      "androidResource": "ic_lucide_search.xml",
+      "derivedSha256": "97cd2c425bb9cb8262a956d0072c7976a1774fcf4bb37c61626be526c405c9f8"
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+{
+  "source_root": "/workspace/runtime-spike/codex",
+  "commit_command": {
+    "argv": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "exit_code": 0,
+    "stdout": "6ff1e1ca3b30fc8b914720681fcf5fe62e95f856\n"
+  },
+  "status_command": {
+    "argv": [
+      "git",
+      "status",
+      "--porcelain"
+    ],
+    "exit_code": 0,
+    "stdout": ""
+  },
+  "files": [
+    {
+      "path": "third_party/v8/README.md",
+      "size": 14722,
+      "sha256": "05a91790c189b5ac53430f4a902ebaff9d708008cd661bf2127cea2c3a6ab3b8"
+    },
+    {
+      "path": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "size": 2078,
+      "sha256": "0802b9beffdf7dce26bdc10b8fd9997be801cee66c585129d56b46e04b1a9aad"
+    },
+    {
+      "path": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "size": 1040,
+      "sha256": "1dd7c7f7d3d91af7f06a2846bddc6a1da7725acc67ecd7ab2c7dfc980dd8c6d4"
+    },
+    {
+      "path": "third_party/v8/artifact_profile.bzl",
+      "size": 4130,
+      "sha256": "cb252fe7fc5244d6859c7c86c7026dc4262c6368fb053e963e6f4fd626cc28c8"
+    },
+    {
+      "path": "third_party/v8/BUILD.bazel",
+      "size": 28026,
+      "sha256": "8f4652c8f8699038384b80f072bce065a2363796258b0b2d05891c99ce13848b"
+    },
+    {
+      "path": "third_party/v8/engine.BUILD.bazel",
+      "size": 30270,
+      "sha256": "842229ad33df56d78ac721e82735912acb918651b785d8a98f4c4f30f95ef454"
+    },
+    {
+      "path": "codex-rs/Cargo.toml",
+      "size": 21926,
+      "sha256": "4f9c16fb73cc8487e40dcbfca545f69e7595e6806e1a59b81ea8045b15364e49"
+    },
+    {
+      "path": "codex-rs/code-mode-runtime/Cargo.toml",
+      "size": 921,
+      "sha256": "075eb58a5975625461eaef95731a83b39bb1a38b2f9bffb2916f6af769e41b4b"
+    },
+    {
+      "path": "MODULE.bazel",
+      "size": 35856,
+      "sha256": "1c27f9120fdea063c48de4f74f2dc9de0a26e8c9d8ef20e5206ffcbae5cee5cc"
+    }
+  ],
+  "manifest_comparisons": [
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "librusty_v8_ptrcomp_sandbox_release_aarch64-apple-darwin.a.gz",
+      "source_sha256": "feab9ae0384bebaa99c1d000654462c9d42123d587185c7876aaeef7d76ff749",
+      "api_digest": "sha256:feab9ae0384bebaa99c1d000654462c9d42123d587185c7876aaeef7d76ff749",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_aarch64-apple-darwin.rs",
+      "source_sha256": "b9d5652ebca515eb2bf4c2ee4a6551b2567117b5aa720f430d2032616dd7e3b5",
+      "api_digest": "sha256:b9d5652ebca515eb2bf4c2ee4a6551b2567117b5aa720f430d2032616dd7e3b5",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_aarch64-pc-windows-msvc.lib.gz",
+      "source_sha256": "daf327876f7753a94b3b05d6d64776258def3ae67503ac75db9c35c6deaa28a5",
+      "api_digest": "sha256:daf327876f7753a94b3b05d6d64776258def3ae67503ac75db9c35c6deaa28a5",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_aarch64-pc-windows-msvc.rs",
+      "source_sha256": "572ed16ff09bb7944f4b35c659ff62dcd3faf43a0351e3f94f011e01b2f92a62",
+      "api_digest": "sha256:572ed16ff09bb7944f4b35c659ff62dcd3faf43a0351e3f94f011e01b2f92a62",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "librusty_v8_ptrcomp_sandbox_release_aarch64-unknown-linux-gnu.a.gz",
+      "source_sha256": "1054464a623006cdf5e25ae20877002bf3edb9a2c2f3e64f44a8714742b15e87",
+      "api_digest": "sha256:1054464a623006cdf5e25ae20877002bf3edb9a2c2f3e64f44a8714742b15e87",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_aarch64-unknown-linux-gnu.rs",
+      "source_sha256": "3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "api_digest": "sha256:3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "librusty_v8_ptrcomp_sandbox_release_aarch64-unknown-linux-musl.a.gz",
+      "source_sha256": "1a60f36a3dd8778802e6980668c4d65a3c7305d85a5d2debf466d9aa0daadd75",
+      "api_digest": "sha256:1a60f36a3dd8778802e6980668c4d65a3c7305d85a5d2debf466d9aa0daadd75",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_aarch64-unknown-linux-musl.rs",
+      "source_sha256": "3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "api_digest": "sha256:3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "librusty_v8_ptrcomp_sandbox_release_x86_64-apple-darwin.a.gz",
+      "source_sha256": "bfe19d9b633b61d99780ece89690427fef4b985c6b4196536eaf94571166fc24",
+      "api_digest": "sha256:bfe19d9b633b61d99780ece89690427fef4b985c6b4196536eaf94571166fc24",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_x86_64-apple-darwin.rs",
+      "source_sha256": "b9d5652ebca515eb2bf4c2ee4a6551b2567117b5aa720f430d2032616dd7e3b5",
+      "api_digest": "sha256:b9d5652ebca515eb2bf4c2ee4a6551b2567117b5aa720f430d2032616dd7e3b5",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_x86_64-pc-windows-msvc.lib.gz",
+      "source_sha256": "cd829415695b30ad61b306b23a381e11276f14bb0b46815ac5ed8b96711d002d",
+      "api_digest": "sha256:cd829415695b30ad61b306b23a381e11276f14bb0b46815ac5ed8b96711d002d",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_x86_64-pc-windows-msvc.rs",
+      "source_sha256": "572ed16ff09bb7944f4b35c659ff62dcd3faf43a0351e3f94f011e01b2f92a62",
+      "api_digest": "sha256:572ed16ff09bb7944f4b35c659ff62dcd3faf43a0351e3f94f011e01b2f92a62",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "librusty_v8_ptrcomp_sandbox_release_x86_64-unknown-linux-gnu.a.gz",
+      "source_sha256": "b3b490f2aa809eda7f6ac727f851fb00ce8355be72827577cfaac28c7137dbcd",
+      "api_digest": "sha256:b3b490f2aa809eda7f6ac727f851fb00ce8355be72827577cfaac28c7137dbcd",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_x86_64-unknown-linux-gnu.rs",
+      "source_sha256": "3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "api_digest": "sha256:3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "librusty_v8_ptrcomp_sandbox_release_x86_64-unknown-linux-musl.a.gz",
+      "source_sha256": "2f2679773a12576dc6b89b0f7d70e8190e5aea8a57f8f6364efaffdd1497d0e7",
+      "api_digest": "sha256:2f2679773a12576dc6b89b0f7d70e8190e5aea8a57f8f6364efaffdd1497d0e7",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0.sha256",
+      "asset_name": "src_binding_ptrcomp_sandbox_release_x86_64-unknown-linux-musl.rs",
+      "source_sha256": "3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "api_digest": "sha256:3e4d5fecdbe0f98a6017e69d7ca82519a77fb032c5eb5e4cdbecdd3e2ec519d5",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_aarch64-apple-darwin.sha256",
+      "source_sha256": "5cebc5830127b460ae8af23004430fd70b535bb22d599d68d024b60df08400d8",
+      "api_digest": "sha256:5cebc5830127b460ae8af23004430fd70b535bb22d599d68d024b60df08400d8",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_aarch64-pc-windows-msvc.sha256",
+      "source_sha256": "a4c895148240270c8b685bf0b86ca6257533c3ecad8833560e462b0854cb3bfc",
+      "api_digest": "sha256:a4c895148240270c8b685bf0b86ca6257533c3ecad8833560e462b0854cb3bfc",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_aarch64-unknown-linux-gnu.sha256",
+      "source_sha256": "94195fe3a70a6043474afabd145c0bbe322f409e95a52c745d64c9f929f80a22",
+      "api_digest": "sha256:94195fe3a70a6043474afabd145c0bbe322f409e95a52c745d64c9f929f80a22",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_aarch64-unknown-linux-musl.sha256",
+      "source_sha256": "c35b823c23c32d349029467e8fa75cc492146a658dc5bd37597d93b125cc64e8",
+      "api_digest": "sha256:c35b823c23c32d349029467e8fa75cc492146a658dc5bd37597d93b125cc64e8",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_x86_64-apple-darwin.sha256",
+      "source_sha256": "f9259abda68c50bfd71d856ece97d272832ac9c18e91fdc892fa9625a003b7bc",
+      "api_digest": "sha256:f9259abda68c50bfd71d856ece97d272832ac9c18e91fdc892fa9625a003b7bc",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_x86_64-pc-windows-msvc.sha256",
+      "source_sha256": "e16bf2d7bc4b64a96a89e87048d61b9c466040e4c82ae64cfe9f7f2052ef3179",
+      "api_digest": "sha256:e16bf2d7bc4b64a96a89e87048d61b9c466040e4c82ae64cfe9f7f2052ef3179",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_x86_64-unknown-linux-gnu.sha256",
+      "source_sha256": "1ec730635970ab1c0e8f4764ea113ad29d69d7f8d4c2ae69f3d766434a759350",
+      "api_digest": "sha256:1ec730635970ab1c0e8f4764ea113ad29d69d7f8d4c2ae69f3d766434a759350",
+      "matched": true
+    },
+    {
+      "manifest": "third_party/v8/rusty_v8_152_2_0_release_manifests.sha256",
+      "asset_name": "rusty_v8_ptrcomp_sandbox_release_x86_64-unknown-linux-musl.sha256",
+      "source_sha256": "12acf8747729db642a9d49d3448174471fb07cf47e01a6238222e2d9299de72f",
+      "api_digest": "sha256:12acf8747729db642a9d49d3448174471fb07cf47e01a6238222e2d9299de72f",
+      "matched": true
+    }
+  ],
+  "all_24_source_entries_match_api_digests": true,
+  "android_named_release_assets": [],
+  "archive_downloaded": false,
+  "code_executed": false
+}

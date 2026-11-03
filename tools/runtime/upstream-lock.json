@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/openai/codex.git",
+  "tag": "rust-v0.166.0",
+  "tag_object": "593389380740f7b4762771573c447ccfdc59742f",
+  "commit": "6ff1e1ca3b30fc8b914720681fcf5fe62e95f856",
+  "cargo_lock_sha256": "22bd51f50864ce40f6686f3350c0547fdd50a8213240f54435ed394f68bf08e6",
+  "cargo_toml_sha256": "4f9c16fb73cc8487e40dcbfca545f69e7595e6806e1a59b81ea8045b15364e49",
+  "rust_toolchain_toml_sha256": "570656042681cfd8795403a455baf9a33035331a07db0645e866bbcea89a3d64",
+  "rust": "1.95.0",
+  "target": "aarch64-linux-android",
+  "android_api": 29,
+  "ndk": {
+    "version": "28.2.13676358",
+    "release": "r28c",
+    "url": "https://dl.google.com/android/repository/android-ndk-r28c-linux.zip",
+    "bytes": 722261334,
+    "vendor_repository_xml_sha1": "a7b54a5de87fecd125a17d54f73c446199e72a64",
+    "observed_sha256": "dfb20d396df28ca02a8c708314b814a4d961dc9074f9a161932746f815aa552f"
+  },
+  "v8": {
+    "version": "152.2.0",
+    "upstream_locked_dependency": "https://github.com/seanh-oai/rusty_v8.git",
+    "commit": "350c5a859a9b3c84ab8701b3ad51e3b7699b30c0",
+    "official_release_base": "https://github.com/openai/codex/releases/download/rusty-v8-v152.2.0",
+    "android_in_official_manifest": false
+  }
+}
